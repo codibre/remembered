@@ -72,20 +72,21 @@ export class Remembered {
 	private schedulePurge(purgeTime: number, key: string) {
 		this.toPurge.push({ purgeTime, key });
 		if (!this.purgeTask) {
-			const wait = async (): Promise<void> => {
-				const current = this.toPurge.shift();
-				if (current) {
-					const waiting = current.purgeTime - Date.now();
-					if (waiting > 0) {
-						await delay(waiting);
-					}
-					this.map.delete(key);
-					return wait();
-				} else {
-					this.purgeTask = undefined;
-				}
-			};
-			this.purgeTask = wait();
+			this.purgeTask = this.wait(key);
+		}
+	}
+
+	private async wait(key: string): Promise<void> {
+		const current = this.toPurge.shift();
+		if (current) {
+			const waiting = current.purgeTime - Date.now();
+			if (waiting > 0) {
+				await delay(waiting);
+			}
+			this.map.delete(key);
+			return this.wait(key);
+		} else {
+			this.purgeTask = undefined;
 		}
 	}
 }
