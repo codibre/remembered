@@ -1,6 +1,6 @@
 {
-  "name": "boilerplate-base",
-  "description": "This project is just a template for creation of new projects",
+  "name": "remembered",
+  "description": "This module is just a template for creation of new projects",
   "version": "0.0.0",
   "private": true,
   "author": {
@@ -17,7 +17,7 @@
     "doc": "npx typedoc",
     "lint": "npm run lint:format && npm run lint:style",
     "lint:fix": "npm run lint:format:fix && npm run lint:style:fix",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "test": "jest test/unit",
     "test:watch": "jest test/unit --watch",
     "test:coverage": "jest test/unit --coverage",
@@ -60,37 +60,43 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/codibre/boilerplate-base.git"
+    "url": "https://github.com/codibre/remembered.git"
   },
-  "homepage": "https://github.com/codibre/boilerplate-base#readme",
+  "homepage": "https://github.com/codibre/remembered#readme",
   "bugs": {
-    "url": "https://github.com/codibre/boilerplate-base/issues"
+    "url": "https://github.com/codibre/remembered/issues"
   },
   "keywords": [],
   "license": "MIT",
   "devDependencies": {
-    "@codibre/confs": "0.0.6",
+    "@codibre/confs": "1.0.1",
     "@semantic-release/changelog": "github:semantic-release/changelog",
     "@semantic-release/commit-analyzer": "^8.0.1",
     "@semantic-release/git": "^9.0.0",
-    "@semantic-release/npm": "^7.0.5",
-    "@semantic-release/release-notes-generator": "^9.0.1",
-    "@typescript-eslint/eslint-plugin": "^4.15.2",
-    "@typescript-eslint/parser": "^4.15.2",
-    "eslint": "^7.20.0",
-    "eslint-config-prettier": "^6.11.0",
-    "eslint-plugin-prettier": "^3.1.4",
-    "eslint-plugin-unused-imports": "^1.1.0",
+    "@semantic-release/npm": "^7.1.0",
+    "@semantic-release/release-notes-generator": "^9.0.2",
+    "@types/fast-fifo": "^1.0.0",
+    "@types/jest": "^26.0.22",
+    "@types/node": "^14.14.37",
+    "@types/semantic-release": "^17.2.0",
+    "@typescript-eslint/eslint-plugin": "^4.20.0",
+    "@typescript-eslint/parser": "^4.20.0",
+    "eslint": "^7.23.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-unused-imports": "^1.1.1",
+    "husky": "^6.0.0",
     "jest": "^26.6.3",
-    "ts-jest": "^26.5.2",
-    "ts-loader": "^8.0.17",
     "prettier": "^2.2.1",
-    "husky": "^4.2.5",
-    "semantic-release": "^17.1.1",
-    "ts-node": "^8.10.2",
-    "typedoc": "^0.20.28",
-    "typedoc-plugin-markdown": "^2.3.1",
-    "typescript": "^4.2.2",
-    "@types/semantic-release": "^17.1.0"
+    "semantic-release": "^17.4.2",
+    "ts-jest": "^26.5.4",
+    "ts-loader": "^8.1.0",
+    "ts-node": "^9.1.1",
+    "typedoc": "^0.20.34",
+    "typedoc-plugin-markdown": "^3.6.0",
+    "typescript": "^4.2.3"
+  },
+  "dependencies": {
+    "fast-fifo": "^1.0.0"
   }
 }
