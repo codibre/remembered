@@ -14,18 +14,18 @@ export class Remembered {
 	>();
 	private purgeTask: PromiseLike<void> | undefined;
 	private toPurge = new Fifo<{ purgeTime: number; key: string }>();
-  private ttl;
+	private ttl;
 
 	constructor(config: RememberedConfig = defaultConfig) {
-    this.ttl = config.ttl;
-  }
+		this.ttl = config.ttl;
+	}
 
-  /**
-   * Returns a remembered promise or the resulted promise from the callback
-   * @param key the remembering key, for remembering purposes
-   * @param callback the callback in case nothing is remember
-   * @returns the (now) remembered promise
-   */
+	/**
+	 * Returns a remembered promise or the resulted promise from the callback
+	 * @param key the remembering key, for remembering purposes
+	 * @param callback the callback in case nothing is remember
+	 * @returns the (now) remembered promise
+	 */
 	get<T>(key: string, callback: () => PromiseLike<T>): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
@@ -40,12 +40,12 @@ export class Remembered {
 		return value;
 	}
 
-  /**
-   * Returns a version of the callback that remembers the result of previous calls and reuse it
-   * @param callback the callback you want to make rememberable
-   * @param getKey a function that returns a remembering key
-   * @returns the rememberable callback
-   */
+	/**
+	 * Returns a version of the callback that remembers the result of previous calls and reuse it
+	 * @param callback the callback you want to make rememberable
+	 * @param getKey a function that returns a remembering key
+	 * @returns the rememberable callback
+	 */
 	wrap<T extends any[], K extends T, R extends PromiseLike<any>>(
 		callback: (...args: T) => R,
 		getKey: (...args: K) => string,
@@ -72,19 +72,20 @@ export class Remembered {
 	private schedulePurge(purgeTime: number, key: string) {
 		this.toPurge.push({ purgeTime, key });
 		if (!this.purgeTask) {
-			this.purgeTask = new Promise(async (resolve) => {
-				let current = this.toPurge.shift();
-				while (current) {
+			const wait = async (): Promise<void> => {
+				const current = this.toPurge.shift();
+				if (current) {
 					const waiting = current.purgeTime - Date.now();
 					if (waiting > 0) {
 						await delay(waiting);
 					}
 					this.map.delete(key);
-					current = this.toPurge.shift();
+					return wait();
+				} else {
+					this.purgeTask = undefined;
 				}
-				this.purgeTask = undefined;
-				resolve();
-			});
+			};
+			this.purgeTask = wait();
 		}
 	}
 }
