@@ -51,8 +51,8 @@ Saudade is the feeling that you feel when you miss someone. Is the emptiness tha
 This module is a tribute for my dear uncles who died due to complications of COVID-19.
 Uncles, you'll always be remembered.
 
-* ** ✞ 2020-04-01**: *Genivaldo Rodrigues dos Santos*
-* ** ✞ 2020-03-21**: *João Carlos Rodrigues dos Santos*
+* **✞ 2020-04-01**: *Genivaldo Rodrigues dos Santos*
+* **✞ 2020-03-21**: *João Carlos Rodrigues dos Santos*
 
 ## License
 
