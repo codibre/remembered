@@ -47,7 +47,8 @@ The given ttl is meant to be readonly. So, if you change the ttl value of the pr
 # Saudade
 
 There is no proper translation for the word *saudade* in English.
-Saudade is the feeling that you feel when you miss someone. Is the emptiness that is left when someone important to you passes away.
+Saudade is the feeling that you feel when you miss someone.
+It's the emptiness that is left when someone important to you passes away.
 This module is a tribute for my dear uncles who died due to complications of COVID-19.
 Uncles, you'll always be remembered.
 
