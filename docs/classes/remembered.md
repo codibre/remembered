@@ -1,4 +1,4 @@
-[fluent-iterable - v0.1.1](../README.md) / Remembered
+[fluent-iterable - v0.2.0](../README.md) / Remembered
 
 # Class: Remembered
 
