@@ -1,10 +1,10 @@
 [![Actions Status](https://github.com/Codibre/remembered/workflows/build/badge.svg)](https://github.com/Codibre/remembered/actions)
 [![Actions Status](https://github.com/Codibre/remembered/workflows/test/badge.svg)](https://github.com/Codibre/remembered/actions)
 [![Actions Status](https://github.com/Codibre/remembered/workflows/lint/badge.svg)](https://github.com/Codibre/remembered/actions)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/65e41e3018643f28168e/test_coverage)](https://codeclimate.com/github/Codibre/remembered/test_coverage)
-[![Maintainability](https://api.codeclimate.com/v1/badges/65e41e3018643f28168e/maintainability)](https://codeclimate.com/github/Codibre/remembered/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/e6e1f5633ac8cd5d5d48/test_coverage)](https://codeclimate.com/github/Codibre/remembered/test_coverage)
+[![Maintainability](https://api.codeclimate.com/v1/badges/e6e1f5633ac8cd5d5d48/maintainability)](https://codeclimate.com/github/Codibre/remembered/maintainability)
 [![Packages](https://david-dm.org/Codibre/remembered.svg)](https://david-dm.org/Codibre/remembered)
-[![npm version](https://badge.fury.io/js/%40codibre%2Fremembered.svg)](https://badge.fury.io/js/%40codibre%2Fremembered)
+[![npm version](https://badge.fury.io/js/remembered.svg)](https://badge.fury.io/js/remembered)
 
 A module to remember for a given time the promises you made.
 
