@@ -64,7 +64,7 @@
   "bugs": {
     "url": "https://github.com/codibre/remembered/issues"
   },
-  "keywords": [],
+  "keywords": ["local", "cache", "semaphore", "memory"],
   "license": "MIT",
   "devDependencies": {
     "@codibre/confs": "1.0.1",
