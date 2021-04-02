@@ -1,23 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { delay } from './delay';
+import { Pacer } from './pacer';
 import { RememberedConfig } from './remembered-config';
-import Fifo = require('fast-fifo');
 
 const defaultConfig = { ttl: 0 };
 /**
  * A class that help you remember previous calls for you functions, to avoid new calls while it is not forgotten
  */
 export class Remembered {
-	private map = new Map<
-		string,
-		{ purgeTime: number; value: Promise<unknown> }
-	>();
-	private purgeTask: PromiseLike<void> | undefined;
-	private toPurge = new Fifo<{ purgeTime: number; key: string }>();
-	private ttl;
+	private map = new Map<string, Promise<any>>();
+	private pacer: Pacer<string> | undefined;
+	private removeImmediately: boolean;
 
 	constructor(config: RememberedConfig = defaultConfig) {
-		this.ttl = config.ttl;
+		this.removeImmediately = !config.ttl;
+		this.pacer =
+			config.ttl > 0
+				? new Pacer(config.ttl, (key: string) => this.map.delete(key))
+				: undefined;
 	}
 
 	/**
@@ -29,14 +27,12 @@ export class Remembered {
 	get<T>(key: string, callback: () => PromiseLike<T>): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
-			return cached.value as PromiseLike<T>;
+			return cached;
 		}
 		const value = this.loadValue(key, callback);
-		const purgeTime = Date.now() + this.ttl;
-		this.map.set(key, { value, purgeTime });
-		if (this.ttl > 0) {
-			this.schedulePurge(purgeTime, key);
-		}
+		this.map.set(key, value);
+		this.pacer?.schedulePurge(key);
+
 		return value;
 	}
 
@@ -63,30 +59,9 @@ export class Remembered {
 			this.map.delete(key);
 			throw err;
 		} finally {
-			if (this.ttl === 0) {
+			if (this.removeImmediately) {
 				this.map.delete(key);
 			}
-		}
-	}
-
-	private schedulePurge(purgeTime: number, key: string) {
-		this.toPurge.push({ purgeTime, key });
-		if (!this.purgeTask) {
-			this.purgeTask = this.wait(key);
-		}
-	}
-
-	private async wait(key: string): Promise<void> {
-		const current = this.toPurge.shift();
-		if (current) {
-			const waiting = current.purgeTime - Date.now();
-			if (waiting > 0) {
-				await delay(waiting);
-			}
-			this.map.delete(key);
-			return this.wait(key);
-		} else {
-			this.purgeTask = undefined;
 		}
 	}
 }

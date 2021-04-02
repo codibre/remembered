@@ -30,6 +30,20 @@
           "--runInBand"
         ],
         "outputCapture": "std"
+      },
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Tests e2e",
+        "skipFiles": ["<node_internals>/**"],
+        "cwd": "${workspaceRoot}",
+        "args": [
+          "-r", "ts-node/register",
+          "${workspaceRoot}/node_modules/jest/bin/jest",
+          "test/e2e",
+          "--runInBand"
+        ],
+        "outputCapture": "std"
       }
 	]
 }

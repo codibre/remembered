@@ -1,24 +1,15 @@
 import { Remembered } from '../../src';
-import * as delayLib from '../../src/delay';
-import { EventEmitter } from 'events';
+import { delay } from '../../src/delay';
 import { expectCallsLike, getNames } from './setup';
 
 const methods = getNames(Remembered);
 
 describe(Remembered.name, () => {
-	let timePasser: EventEmitter;
 	let target: Remembered;
 
 	beforeEach(() => {
-		timePasser = new EventEmitter();
-		jest.spyOn(delayLib, 'delay').mockImplementation(
-			() =>
-				new Promise((resolve) => {
-					timePasser.once('delay', resolve);
-				}),
-		);
 		target = new Remembered({
-			ttl: 9919,
+			ttl: 100,
 		});
 	});
 
@@ -26,15 +17,14 @@ describe(Remembered.name, () => {
 		it('should remember the last result until the ttl has passed', async () => {
 			let count = 0;
 			const getter = jest.fn().mockImplementation(async () => ++count);
-			jest.spyOn(Date, 'now').mockImplementation(() => (1 + count) * 9919 - 1);
 			const key = 'key value';
 
 			const result1 = await target.get(key, getter);
-			timePasser.emit('delay');
+			await delay(60);
 			const result2 = await target.get(key, getter);
-			timePasser.emit('delay');
+			await delay(60);
 			const result3 = await target.get(key, getter);
-			timePasser.emit('delay');
+			await delay(60);
 			const result4 = await target.get(key, getter);
 
 			expectCallsLike(getter, [], []);
@@ -42,6 +32,37 @@ describe(Remembered.name, () => {
 			expect(result2).toBe(1);
 			expect(result3).toBe(2);
 			expect(result4).toBe(2);
+		});
+
+		it('should work with multiple keys independently', async () => {
+			let count1 = 0;
+			let count2 = 10;
+			const getter1 = jest.fn().mockImplementation(async () => ++count1);
+			const getter2 = jest.fn().mockImplementation(async () => ++count2);
+			const key1 = 'key1';
+			const key2 = 'key2';
+
+			const result11 = await target.get(key1, getter1);
+			const result21 = await target.get(key2, getter2);
+			await delay(60);
+			const result12 = await target.get(key1, getter1);
+			const result22 = await target.get(key2, getter2);
+			await delay(60);
+			const result13 = await target.get(key1, getter1);
+			const result23 = await target.get(key2, getter2);
+			await delay(60);
+			const result14 = await target.get(key1, getter1);
+			const result24 = await target.get(key2, getter2);
+
+			expectCallsLike(getter1, [], []);
+			expect(result11).toBe(1);
+			expect(result12).toBe(1);
+			expect(result13).toBe(2);
+			expect(result14).toBe(2);
+			expect(result21).toBe(11);
+			expect(result22).toBe(11);
+			expect(result23).toBe(12);
+			expect(result24).toBe(12);
 		});
 
 		it('should not keep a result that threw an exception', async () => {
@@ -52,7 +73,6 @@ describe(Remembered.name, () => {
 				}
 				return count;
 			});
-			jest.spyOn(Date, 'now').mockImplementation(() => (1 + count) * 9919 - 1);
 			const key = 'key value';
 			let thrownError;
 
@@ -72,7 +92,6 @@ describe(Remembered.name, () => {
 			let count = 0;
 			const target0 = new Remembered();
 			const getter = jest.fn().mockImplementation(async () => ++count);
-			jest.spyOn(Date, 'now').mockImplementation(() => (1 + count) * 9919 - 1);
 			const key = 'key value';
 
 			const [result1, result2] = await Promise.all([
@@ -94,15 +113,14 @@ describe(Remembered.name, () => {
 				k: string,
 				n?: number,
 			) => Promise<number>;
-			jest.spyOn(Date, 'now').mockImplementation(() => (1 + count) * 9919 - 1);
 
 			const callback = target.wrap(getter, (k) => k);
 			const result1 = await callback('test');
-			timePasser.emit('delay');
+			await delay(60);
 			const result2 = await callback('test', 1);
-			timePasser.emit('delay');
+			await delay(60);
 			const result3 = await callback('test', 2);
-			timePasser.emit('delay');
+			await delay(60);
 			const result4 = await callback('test', 3);
 
 			expectCallsLike(getter, ['test'], ['test', 2]);
