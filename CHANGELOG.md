@@ -1,5 +1,8 @@
 
-## 0.2.1
+## 0.3.0
+* 46ef492 adding keywords
+## v0.2.1
+* 630e39d 0.2.1
 * 104bc66 fixing key deletion at each pacer
 * 571ea14 fixing readme
 ## v0.2.0

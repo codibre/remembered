@@ -1,7 +1,7 @@
 {
   "name": "remembered",
   "description": "This module is just a template for creation of new projects",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": {
     "name": "Thiago O Santos <tos.oliveira@gmail.com>"
   },
@@ -64,7 +64,12 @@
   "bugs": {
     "url": "https://github.com/codibre/remembered/issues"
   },
-  "keywords": ["local", "cache", "semaphore", "memory"],
+  "keywords": [
+    "local",
+    "cache",
+    "semaphore",
+    "memory"
+  ],
   "license": "MIT",
   "devDependencies": {
     "@codibre/confs": "1.0.1",
