@@ -1,4 +1,4 @@
-[fluent-iterable - v0.2.0](../README.md) / Remembered
+[fluent-iterable - v0.2.1](../README.md) / Remembered
 
 # Class: Remembered
 
@@ -13,16 +13,13 @@ A class that help you remember previous calls for you functions, to avoid new ca
 ### Properties
 
 - [map](remembered.md#map)
-- [purgeTask](remembered.md#purgetask)
-- [toPurge](remembered.md#topurge)
-- [ttl](remembered.md#ttl)
+- [pacer](remembered.md#pacer)
+- [removeImmediately](remembered.md#removeimmediately)
 
 ### Methods
 
 - [get](remembered.md#get)
 - [loadValue](remembered.md#loadvalue)
-- [schedulePurge](remembered.md#schedulepurge)
-- [wait](remembered.md#wait)
 - [wrap](remembered.md#wrap)
 
 ## Constructors
@@ -43,25 +40,19 @@ Name | Type |
 
 ### map
 
-• `Private` **map**: *Map*<string, { `purgeTime`: *number* ; `value`: *Promise*<unknown\>  }\>
+• `Private` **map**: *Map*<string, Promise<any\>\>
 
 ___
 
-### purgeTask
+### pacer
 
-• `Private` **purgeTask**: *undefined* \| *PromiseLike*<void\>
-
-___
-
-### toPurge
-
-• `Private` **toPurge**: *FastFIFO*<{ `key`: *string* ; `purgeTime`: *number*  }\>
+• `Private` **pacer**: *undefined* \| *Pacer*<string\>
 
 ___
 
-### ttl
+### removeImmediately
 
-• `Private` **ttl**: *number*
+• `Private` **removeImmediately**: *boolean*
 
 ## Methods
 
@@ -108,35 +99,6 @@ Name | Type |
 `load` | () => *PromiseLike*<T\> |
 
 **Returns:** *Promise*<T\>
-
-___
-
-### schedulePurge
-
-▸ `Private`**schedulePurge**(`purgeTime`: *number*, `key`: *string*): *void*
-
-#### Parameters:
-
-Name | Type |
-:------ | :------ |
-`purgeTime` | *number* |
-`key` | *string* |
-
-**Returns:** *void*
-
-___
-
-### wait
-
-▸ `Private`**wait**(`key`: *string*): *Promise*<void\>
-
-#### Parameters:
-
-Name | Type |
-:------ | :------ |
-`key` | *string* |
-
-**Returns:** *Promise*<void\>
 
 ___
 

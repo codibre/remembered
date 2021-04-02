@@ -1,4 +1,9 @@
 
+## 0.2.1
+* 104bc66 fixing key deletion at each pacer
+* 571ea14 fixing readme
+## v0.2.0
+* 3daddf6 0.2.0
 * 2026303 fixing readme
 * 780df72 fixing readme
 * 0bcde36 generating documentation
