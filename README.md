@@ -25,7 +25,7 @@ const remembered = new Remembered({ ttl: 1000 });
 Now, just call the **get** method informing a remembering key and a callback:
 
 ```ts
-const callback = new Promise<number>((resolve) => {
+const callback = () => new Promise<number>((resolve) => {
   setTimeout(200, () => resolve(Date.now()));
 });
 
@@ -42,7 +42,25 @@ Remembered don't "cache" the result of your async operation: it caches the promi
 This is very useful for concurrent tasks where you have the same heavy call and you want it to happen just once.
 In this example, the promise is resolved in 200 milliseconds, but the ttl is 1 second and it starts to count not after the promise is resolved, but when the promise is made. In other words, exactly 1 second after the first call, the callback will need to be called again.
 
-If you want for the promise to be remembered just while it is not resolved, you can use **ttl** 0. In this case, while the promise is pending, Remembered will return the same reference, but, after it is resolved, then callback will be called again
+If you want for the promise to be remembered just while it is not resolved, you can use **ttl** 0. In this case, while the promise is pending, Remembered will return the same reference, but, after it is resolved, then callback will be called
+
+Another option is to use the **wrap** method:
+
+
+```ts
+const callback = () => new Promise<number>((resolve) => {
+  setTimeout(200, () => resolve(Date.now()));
+});
+const wrapped = remembered.wrap(callback, () => 'test');
+
+const [r1, r2, r3] = await Promise.all([
+  wrapped(),
+  wrapped(),
+  wrapped(),
+]);
+```
+
+The wrap method returns a version of your function that receives the exact same arguments, but uses remembered under the hood. The second parameters you inform also receives the same parameters that your first callback receives, but it must return the remembering key.
 
 # Important!
 
