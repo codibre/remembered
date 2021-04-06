@@ -29,7 +29,11 @@ const callback = new Promise<number>((resolve) => {
   setTimeout(200, () => resolve(Date.now()));
 });
 
-const [r1, r2, r3] = await Promise.all(remembered.get('test', callback));
+const [r1, r2, r3] = await Promise.all([
+  remembered.get('test', callback),
+  remembered.get('test', callback),
+  remembered.get('test', callback),
+]);
 ```
 
 In the above example, **r1**, **r2** and **r3** will receive the same exact +promise.
