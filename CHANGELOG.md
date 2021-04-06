@@ -1,5 +1,9 @@
 
-## 0.3.0
+## 0.3.1
+* 7adc9bb fixing readme
+* 60649e1 fixing readme
+## v0.3.0
+* 6b5514d 0.3.0
 * 46ef492 adding keywords
 ## v0.2.1
 * 630e39d 0.2.1
