@@ -1,5 +1,10 @@
 
-## 0.3.1
+## 0.3.2
+* d574d23 creating noCacheIf parameter
+* eb115eb creating noCacheIf parameter
+* af59e0c creating noCacheIf condition
+## v0.3.1
+* 36bee4a 0.3.1
 * 7adc9bb fixing readme
 * 60649e1 fixing readme
 ## v0.3.0
