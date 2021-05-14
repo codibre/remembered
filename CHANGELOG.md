@@ -1,5 +1,6 @@
 
-## 0.3.3
+## 0.3.4
+* c072979 fixing type noCacheIf
 * 8c517d5 fixing type noCacheIf
 * 2e0a4bb version bump
 * d574d23 creating noCacheIf parameter
