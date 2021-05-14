@@ -22,14 +22,15 @@ export class Remembered {
 	 * Returns a remembered promise or the resulted promise from the callback
 	 * @param key the remembering key, for remembering purposes
 	 * @param callback the callback in case nothing is remember
+   * @param noCacheIf a optional condition that, when informed, the cache is not kept
 	 * @returns the (now) remembered promise
 	 */
-	get<T>(key: string, callback: () => PromiseLike<T>): PromiseLike<T> {
+	get<T>(key: string, callback: () => PromiseLike<T>, noCacheIf?: (result: T) => boolean): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
 			return cached;
 		}
-		const value = this.loadValue(key, callback);
+		const value = this.loadValue(key, callback, noCacheIf);
 		this.map.set(key, value);
 		this.pacer?.schedulePurge(key);
 
@@ -45,16 +46,21 @@ export class Remembered {
 	wrap<T extends any[], K extends T, R extends PromiseLike<any>>(
 		callback: (...args: T) => R,
 		getKey: (...args: K) => string,
+    noCacheIf?: (result: T) => boolean,
 	): (...args: T) => R {
 		return (...args: T): R => {
 			const key = getKey(...(args as K));
-			return this.get(key, () => callback(...args)) as R;
+			return this.get(key, () => callback(...args), noCacheIf) as R;
 		};
 	}
 
-	private async loadValue<T>(key: string, load: () => PromiseLike<T>) {
+	private async loadValue<T>(key: string, load: () => PromiseLike<T>, noCacheIf?: (result: T) => boolean) {
 		try {
-			return await load();
+			const result = await load();
+      if (noCacheIf?.(result)) {
+        this.map.delete(key);
+      }
+      return result;
 		} catch (err) {
 			this.map.delete(key);
 			throw err;

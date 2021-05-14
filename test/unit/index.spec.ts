@@ -33,6 +33,25 @@ describe(Remembered.name, () => {
 			expect(result3).toBe(2);
 			expect(result4).toBe(2);
 		});
+		it('should remember the last result until the ttl has passed when noCacheIf is informed and returns false', async () => {
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+			const key = 'key value';
+
+			const result1 = await target.get(key, getter, () => false);
+			await delay(60);
+			const result2 = await target.get(key, getter, () => false);
+			await delay(60);
+			const result3 = await target.get(key, getter, () => false);
+			await delay(60);
+			const result4 = await target.get(key, getter, () => false);
+
+			expectCallsLike(getter, [], []);
+			expect(result1).toBe(1);
+			expect(result2).toBe(1);
+			expect(result3).toBe(2);
+			expect(result4).toBe(2);
+		});
 
 		it('should work with multiple keys independently', async () => {
 			let count1 = 0;
@@ -104,6 +123,22 @@ describe(Remembered.name, () => {
 			expect(result2).toBe(1);
 			expect(result3).toBe(2);
 		});
+
+		it('should remember promise only while it is not resolved when noCacheIf is informed and returns true', async () => {
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+			const key = 'key value';
+
+			const [result1, result2] = await Promise.all([
+				target.get(key, getter, () => true),
+				target.get(key, getter, () => true),
+			]);
+			const result3 = await target.get(key, getter, () => true);
+
+			expect(result1).toBe(1);
+			expect(result2).toBe(1);
+			expect(result3).toBe(2);
+		});
 	});
 
 	describe(methods.wrap, () => {
@@ -128,6 +163,29 @@ describe(Remembered.name, () => {
 			expect(result2).toBe(1);
 			expect(result3).toBe(2);
 			expect(result4).toBe(2);
+		});
+
+		it('should return a rememberable callback that respects noCacheIf', async () => {
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count) as (
+				k: string,
+				n?: number,
+			) => Promise<number>;
+
+			const callback = target.wrap(getter, (k) => k, () => true);
+			const result1 = await callback('test');
+			await delay(60);
+			const result2 = await callback('test', 1);
+			await delay(60);
+			const result3 = await callback('test', 2);
+			await delay(60);
+			const result4 = await callback('test', 3);
+
+			expectCallsLike(getter, ['test'], ['test', 1], ['test', 2], ['test', 3]);
+			expect(result1).toBe(1);
+			expect(result2).toBe(2);
+			expect(result3).toBe(3);
+			expect(result4).toBe(4);
 		});
 	});
 });
