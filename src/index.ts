@@ -50,7 +50,9 @@ export class Remembered {
 	wrap<T extends any[], K extends T, R extends PromiseLike<any>>(
 		callback: (...args: T) => R,
 		getKey: (...args: K) => string,
-		noCacheIf?: (result: R) => boolean,
+		noCacheIf?: (
+			result: R extends PromiseLike<infer TR> ? TR : never,
+		) => boolean,
 	): (...args: T) => R {
 		return (...args: T): R => {
 			const key = getKey(...(args as K));
