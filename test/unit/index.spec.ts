@@ -172,7 +172,11 @@ describe(Remembered.name, () => {
 				n?: number,
 			) => Promise<number>;
 
-			const callback = target.wrap(getter, (k) => k, () => true);
+			const callback = target.wrap(
+				getter,
+				(k) => k,
+				() => true,
+			);
 			const result1 = await callback('test');
 			await delay(60);
 			const result2 = await callback('test', 1);
