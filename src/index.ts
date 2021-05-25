@@ -9,6 +9,7 @@ export class Remembered {
 	private map = new Map<string, Promise<any>>();
 	private pacer: Pacer<string> | undefined;
 	private removeImmediately: boolean;
+	private onReused?: (...args: any[]) => void;
 
 	constructor(config: RememberedConfig = defaultConfig) {
 		this.removeImmediately = !config.ttl;
@@ -32,6 +33,7 @@ export class Remembered {
 	): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
+			this.onReused?.(key);
 			return cached;
 		}
 		const value = this.loadValue(key, callback, noCacheIf);
