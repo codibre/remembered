@@ -1,5 +1,7 @@
 
-## 0.4.0
+## 0.4.1
+* 2a8281d fixing onReused signature
+* ccc0801 version bump
 * 42c7259 adding onReused
 * a3f9a50 version bump
 * c072979 fixing type noCacheIf
