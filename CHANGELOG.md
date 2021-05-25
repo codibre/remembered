@@ -1,5 +1,7 @@
 
-## 0.3.4
+## 0.4.0
+* 42c7259 adding onReused
+* a3f9a50 version bump
 * c072979 fixing type noCacheIf
 * 8c517d5 fixing type noCacheIf
 * 2e0a4bb version bump
