@@ -1,5 +1,7 @@
 
-## 0.4.2
+## 0.4.3
+* 8632f23 fixing onReused initialization
+* c362995 new version
 * b95faf0 fixing version exporting
 * 9f9236d adding onCache
 * 2a8281d fixing onReused signature
