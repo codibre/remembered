@@ -1,5 +1,7 @@
 
-## 0.4.3
+## 0.5.0
+* c367e13 feat: adding support for callback ttl
+* 3c6b0fe version bump
 * 8632f23 fixing onReused initialization
 * c362995 new version
 * b95faf0 fixing version exporting
