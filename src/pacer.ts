@@ -1,17 +1,18 @@
+import { Ttl } from './remembered-config';
 import Fifo = require('fast-fifo');
 import { delay } from './delay';
 
 export class Pacer<T> {
 	private purgeTask: PromiseLike<void> | undefined;
 	private toPurge = new Fifo<{ purgeTime: number; payload: T }>();
-	private pace: () => number;
+	private pace: (payload: T) => number;
 
-	constructor(pace: number | (() => number), private run: (payload: T) => any) {
+	constructor(pace: Ttl, private run: (payload: T) => any) {
 		this.pace = typeof pace === 'number' ? () => pace : pace;
 	}
 
 	schedulePurge(payload: T) {
-		const purgeTime = Date.now() + this.pace();
+		const purgeTime = Date.now() + this.pace(payload);
 		this.toPurge.push({ purgeTime, payload });
 		if (!this.purgeTask) {
 			this.purgeTask = this.wait();
