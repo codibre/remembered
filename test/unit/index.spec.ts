@@ -191,5 +191,30 @@ describe(Remembered.name, () => {
 			expect(result3).toBe(3);
 			expect(result4).toBe(4);
 		});
+
+		it('should remember promise only while elapsed time is lesser than ttl when ttl is a function', async () => {
+			let count = 0;
+			let ttl = 100;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+			target = new Remembered({ ttl: () => ttl });
+			const key = 'key value';
+
+			const result1 = await target.get(key, getter);
+			await delay(60);
+			ttl = 40;
+			const result2 = await target.get(key, getter);
+			await delay(60);
+			ttl = 20;
+			const result3 = await target.get(key, getter);
+			await delay(60);
+			ttl = 80;
+			const result4 = await target.get(key, getter);
+
+			expectCallsLike(getter, [], [], []);
+			expect(result1).toBe(1);
+			expect(result2).toBe(1);
+			expect(result3).toBe(2);
+			expect(result4).toBe(3);
+		});
 	});
 });

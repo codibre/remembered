@@ -14,10 +14,9 @@ export class Remembered {
 	constructor(config: RememberedConfig = defaultConfig) {
 		this.removeImmediately = !config.ttl;
 		this.onReused = config.onReused;
-		this.pacer =
-			config.ttl > 0
-				? new Pacer(config.ttl, (key: string) => this.map.delete(key))
-				: undefined;
+		this.pacer = config.ttl
+			? new Pacer(config.ttl, (key: string) => this.map.delete(key))
+			: undefined;
 	}
 
 	/**

@@ -1,4 +1,4 @@
 export interface RememberedConfig {
-	ttl: number;
+	ttl: number | (() => number);
 	onReused?: (key: string) => void;
 }
