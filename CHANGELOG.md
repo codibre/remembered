@@ -1,5 +1,9 @@
 
-## 0.6.0
+## 0.7.0
+* 3a837e2 feat: function ttl now receives request payload
+* f26a5bc chore: readding docs
+* 265526f chore: updating dependencies
+* 8ea293c chore: removing docs
 * f828026 chore: updating dependencies
 * c367e13 feat: adding support for callback ttl
 * 3c6b0fe version bump
