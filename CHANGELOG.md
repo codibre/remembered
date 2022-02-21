@@ -1,3 +1,15 @@
+# [0.4.0](https://github.com/codibre/remembered/compare/v0.3.1...v0.4.0) (2022-02-21)
+
+
+### Bug Fixes
+
+* preparing semantic release ([2fd2224](https://github.com/codibre/remembered/commit/2fd22246356b19a8da4a80b2ac051166f606e3a4))
+
+
+### Features
+
+* adding support for callback ttl ([c367e13](https://github.com/codibre/remembered/commit/c367e13f6543e4d30dd0ded741a11681183c32ae))
+* function ttl now receives request payload ([3a837e2](https://github.com/codibre/remembered/commit/3a837e2ca228cb2e60bbaac9e067c5f4551683df))
 
 ## 0.7.0
 * 3a837e2 feat: function ttl now receives request payload
