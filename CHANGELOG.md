@@ -1,3 +1,10 @@
+# [0.5.0](https://github.com/codibre/remembered/compare/v0.4.0...v0.5.0) (2022-05-27)
+
+
+### Features
+
+* supporting onPurge callback for purging notification ([#1](https://github.com/codibre/remembered/issues/1)) ([22eadf4](https://github.com/codibre/remembered/commit/22eadf4071856bd9be80af5db29a85a15b8552b2))
+
 # [0.4.0](https://github.com/codibre/remembered/compare/v0.3.1...v0.4.0) (2022-02-21)
 
 
