@@ -30,6 +30,7 @@ export class Remembered {
 		key: string,
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
+		onPurge?: (key: string) => void,
 	): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
@@ -38,7 +39,7 @@ export class Remembered {
 		}
 		const value = this.loadValue(key, callback, noCacheIf);
 		this.map.set(key, value);
-		this.pacer?.schedulePurge(key);
+		this.pacer?.schedulePurge(key, onPurge);
 
 		return value;
 	}
