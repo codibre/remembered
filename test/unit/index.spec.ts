@@ -140,7 +140,7 @@ describe(Remembered.name, () => {
 			expect(result3).toBe(2);
 		});
 
-		it('should always get from cache when there is a last result, event an expired one when nonBlocking is true', async () => {
+		it('should always get from cache when there is a last result, even an expired one when nonBlocking is true', async () => {
 			const target2 = new Remembered({
 				ttl: 2,
 				nonBlocking: true,
