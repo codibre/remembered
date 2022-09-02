@@ -32,24 +32,22 @@ export class Remembered {
 		key: string,
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
-		onPurge?: (key: string) => void,
 	): PromiseLike<T> {
 		if (this.config.nonBlocking) {
 			if (this.nonBlockingMap.has(key)) {
-				dontWait(() => this.blockingGet(key, callback, noCacheIf, onPurge));
+				dontWait(() => this.blockingGet(key, callback, noCacheIf));
 
 				return this.nonBlockingMap.get(key);
 			}
 		}
 
-		return this.blockingGet(key, callback, noCacheIf, onPurge);
+		return this.blockingGet(key, callback, noCacheIf);
 	}
 
 	blockingGet<T>(
 		key: string,
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
-		onPurge?: (key: string) => void,
 	): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
@@ -58,7 +56,7 @@ export class Remembered {
 		}
 		const value = this.loadValue(key, callback, noCacheIf);
 		this.map.set(key, value);
-		this.pacer?.schedulePurge(key, onPurge);
+		this.pacer?.schedulePurge(key);
 
 		if (this.config.nonBlocking) {
 			this.nonBlockingMap.set(key, value);

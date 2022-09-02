@@ -239,22 +239,5 @@ describe(Remembered.name, () => {
 			expect(result3).toBe(2);
 			expect(result4).toBe(3);
 		});
-
-		it('should call the onPurge callback when purge happens', async () => {
-			let count = 0;
-			let ttl = 100;
-			const getter = jest.fn().mockImplementation(async () => ++count);
-			target = new Remembered({ ttl: () => ttl });
-			const key = 'key value';
-			const onPurge = jest.fn();
-
-			const result = await target.get(key, getter, undefined, onPurge);
-			await delay(100);
-			ttl = 40;
-
-			expectCallsLike(getter, []);
-			expectCallsLike(onPurge, [key]);
-			expect(result).toBe(1);
-		});
 	});
 });
