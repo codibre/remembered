@@ -1,3 +1,10 @@
+# [0.8.0](https://github.com/codibre/remembered/compare/v0.7.0...v0.8.0) (2022-09-02)
+
+
+### Features
+
+* fixing package description ([e9e8d81](https://github.com/codibre/remembered/commit/e9e8d81e36201b8addceb830c86379a6dce469ee))
+
 # [0.7.0](https://github.com/codibre/remembered/compare/v0.6.0...v0.7.0) (2022-09-02)
 
 
