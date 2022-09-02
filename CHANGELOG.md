@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/codibre/remembered/compare/v0.5.0...v0.6.0) (2022-09-02)
+
+
+### Features
+
+* Adding nonBlocking option ([#2](https://github.com/codibre/remembered/issues/2)) ([f783d91](https://github.com/codibre/remembered/commit/f783d91fa606ddcf43c84856743dc63a3632c95c))
+
 # [0.5.0](https://github.com/codibre/remembered/compare/v0.4.0...v0.5.0) (2022-05-27)
 
 
