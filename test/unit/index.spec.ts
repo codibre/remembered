@@ -139,6 +139,29 @@ describe(Remembered.name, () => {
 			expect(result2).toBe(1);
 			expect(result3).toBe(2);
 		});
+
+		it('should always get from cache when there is a last result, even an expired one when nonBlocking is true', async () => {
+			const target2 = new Remembered({
+				ttl: 2,
+				nonBlocking: true,
+			});
+			let i = 0;
+			const callback = jest.fn().mockImplementation(() => i++);
+
+			const result1 = await target2.get('a', callback);
+			await delay(3);
+			const result2 = await target2.get('a', callback);
+
+			expect(result1).toBe(result2);
+			expectCallsLike(callback, []);
+			await delay(1);
+			expectCallsLike(callback, [], []);
+			const result3 = await target2.get('a', callback);
+			expect(result3).toBe(1);
+			expectCallsLike(callback, [], []);
+			await delay(1);
+			expectCallsLike(callback, [], []);
+		});
 	});
 
 	describe(methods.wrap, () => {
