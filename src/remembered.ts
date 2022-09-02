@@ -1,3 +1,4 @@
+import { dontWait } from './dont-wait';
 import { Pacer } from './pacer';
 import { RememberedConfig } from './remembered-config';
 
@@ -7,11 +8,12 @@ const defaultConfig = { ttl: 0 };
  */
 export class Remembered {
 	private map = new Map<string, Promise<any>>();
+	private nonBlockingMap = new Map<string, any>();
 	private pacer: Pacer<string> | undefined;
 	private removeImmediately: boolean;
 	private onReused?: (...args: any[]) => void;
 
-	constructor(config: RememberedConfig = defaultConfig) {
+	constructor(private config: RememberedConfig = defaultConfig) {
 		this.removeImmediately = !config.ttl;
 		this.onReused = config.onReused;
 		this.pacer = config.ttl
@@ -32,6 +34,23 @@ export class Remembered {
 		noCacheIf?: (result: T) => boolean,
 		onPurge?: (key: string) => void,
 	): PromiseLike<T> {
+		if (this.config.nonBlocking) {
+			if (this.nonBlockingMap.has(key)) {
+				dontWait(() => this.blockingGet(key, callback, noCacheIf, onPurge));
+
+				return this.nonBlockingMap.get(key);
+			}
+		}
+
+		return this.blockingGet(key, callback, noCacheIf, onPurge);
+	}
+
+	blockingGet<T>(
+		key: string,
+		callback: () => PromiseLike<T>,
+		noCacheIf?: (result: T) => boolean,
+		onPurge?: (key: string) => void,
+	): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
 			this.onReused?.(key);
@@ -41,6 +60,9 @@ export class Remembered {
 		this.map.set(key, value);
 		this.pacer?.schedulePurge(key, onPurge);
 
+		if (this.config.nonBlocking) {
+			this.nonBlockingMap.set(key, value);
+		}
 		return value;
 	}
 
@@ -72,6 +94,8 @@ export class Remembered {
 			const result = await load();
 			if (noCacheIf?.(result)) {
 				this.map.delete(key);
+			} else if (this.config.nonBlocking) {
+				this.nonBlockingMap.set(key, result);
 			}
 			return result;
 		} catch (err) {
