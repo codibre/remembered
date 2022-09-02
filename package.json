@@ -1,6 +1,6 @@
 {
   "name": "remembered",
-  "description": "This module is just a template for creation of new projects",
+  "description": "Easy memory cache and semaphore",
   "version": "0.7.0",
   "author": {
     "name": "Thiago O Santos <tos.oliveira@gmail.com>"
