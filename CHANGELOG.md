@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/codibre/remembered/compare/v0.6.0...v0.7.0) (2022-09-02)
+
+
+### Features
+
+* version bump ([04dfc46](https://github.com/codibre/remembered/commit/04dfc462d1e51474951d6c8824258da26c86cdb1))
+
 # [0.6.0](https://github.com/codibre/remembered/compare/v0.5.0...v0.6.0) (2022-09-02)
 
 

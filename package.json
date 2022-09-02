@@ -1,7 +1,7 @@
 {
   "name": "remembered",
   "description": "This module is just a template for creation of new projects",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "author": {
     "name": "Thiago O Santos <tos.oliveira@gmail.com>"
   },
