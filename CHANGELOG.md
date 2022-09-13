@@ -1,3 +1,10 @@
+## [0.8.1](https://github.com/codibre/remembered/compare/v0.8.0...v0.8.1) (2022-09-13)
+
+
+### Bug Fixes
+
+* removing purge custom task (unstable) ([45d9305](https://github.com/codibre/remembered/commit/45d9305aa91c26d32ee0c226633b7c598c960fb9))
+
 # [0.8.0](https://github.com/codibre/remembered/compare/v0.7.0...v0.8.0) (2022-09-02)
 
 
