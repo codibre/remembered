@@ -8,9 +8,8 @@ describe(Remembered.name, () => {
 	let target: Remembered;
 
 	beforeEach(() => {
-		target = new Remembered({
-			ttl: 100,
-		});
+		const ttl = 100;
+		target = new Remembered({ ttl });
 	});
 
 	describe(methods.get, () => {
