@@ -1,3 +1,10 @@
+## [0.8.2](https://github.com/codibre/remembered/compare/v0.8.1...v0.8.2) (2022-09-13)
+
+
+### Bug Fixes
+
+* fixing publising ([d765e49](https://github.com/codibre/remembered/commit/d765e4948002e840d66dc0eb0ee46baa677cee48))
+
 ## [0.8.1](https://github.com/codibre/remembered/compare/v0.8.0...v0.8.1) (2022-09-13)
 
 
