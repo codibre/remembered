@@ -1,3 +1,10 @@
+# [0.9.0](https://github.com/codibre/remembered/compare/v0.8.2...v0.9.0) (2022-11-08)
+
+
+### Features
+
+* adding getSync for nonBlocking instances ([#3](https://github.com/codibre/remembered/issues/3)) ([84405a6](https://github.com/codibre/remembered/commit/84405a667f91e37335de539d8bfe9a9815a5fbd7))
+
 ## [0.8.2](https://github.com/codibre/remembered/compare/v0.8.1...v0.8.2) (2022-09-13)
 
 
