@@ -44,6 +44,19 @@ export class Remembered {
 		return this.blockingGet(key, callback, noCacheIf);
 	}
 
+	getSync<T>(
+		key: string,
+		callback: () => PromiseLike<T>,
+		noCacheIf?: (result: T) => boolean,
+	): T | undefined {
+		if (!this.config.nonBlocking) {
+			throw new Error('getSync is only available for nonBlocking instances');
+		}
+		dontWait(() => this.blockingGet(key, callback, noCacheIf));
+
+		return this.nonBlockingMap.get(key);
+	}
+
 	blockingGet<T>(
 		key: string,
 		callback: () => PromiseLike<T>,
