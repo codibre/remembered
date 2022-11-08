@@ -163,67 +163,6 @@ describe(Remembered.name, () => {
 		});
 	});
 
-	describe(methods.getSync, () => {
-		it('should return cache result when it exists', async () => {
-			const target2 = new Remembered({
-				ttl: 2,
-				nonBlocking: true,
-			});
-			let i = 0;
-			const callback = jest.fn().mockImplementation(() => i++);
-
-			const result1 = await target2.get('a', callback);
-			await delay(3);
-			const result2 = target2.getSync('a', callback);
-
-			expect(result1).toBe(result2);
-			expectCallsLike(callback, []);
-			await delay(1);
-			expectCallsLike(callback, [], []);
-			const result3 = await target2.get('a', callback);
-			expect(result3).toBe(1);
-			expectCallsLike(callback, [], []);
-			await delay(1);
-			expectCallsLike(callback, [], []);
-		});
-
-		it('should return undefined when no cache exists, but return something after it is warmed up', async () => {
-			const target2 = new Remembered({
-				ttl: 2,
-				nonBlocking: true,
-			});
-			let i = 0;
-			const callback = jest.fn().mockImplementation(() => i++);
-
-			const result1 = target2.getSync('a', callback);
-
-			expect(result1).toBeUndefined();
-			expectCallsLike(callback);
-			await delay(1);
-			expectCallsLike(callback, []);
-			const result2 = target2.getSync('a', callback);
-			expect(result2).toBe(0);
-		});
-
-		it('should throw an error when nonBlocking is false', async () => {
-			const target2 = new Remembered({
-				ttl: 2,
-				nonBlocking: false,
-			});
-			let i = 0;
-			const callback = jest.fn().mockImplementation(() => i++);
-			let err: any;
-
-			try {
-				target2.getSync('a', callback);
-			} catch (error) {
-				err = error;
-			}
-
-			expect(err).toBeInstanceOf(Error);
-		});
-	});
-
 	describe(methods.wrap, () => {
 		it('should return a rememberable callback', async () => {
 			let count = 0;
