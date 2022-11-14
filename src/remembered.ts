@@ -32,27 +32,29 @@ export class Remembered {
 		key: string,
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
+		ttl?: number,
 	): PromiseLike<T> {
 		if (this.config.nonBlocking) {
 			if (this.nonBlockingMap.has(key)) {
-				dontWait(() => this.blockingGet(key, callback, noCacheIf));
+				dontWait(() => this.blockingGet(key, callback, noCacheIf, ttl));
 
 				return this.nonBlockingMap.get(key);
 			}
 		}
 
-		return this.blockingGet(key, callback, noCacheIf);
+		return this.blockingGet(key, callback, noCacheIf, ttl);
 	}
 
 	getSync<T>(
 		key: string,
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
+		ttl?: number,
 	): T | undefined {
 		if (!this.config.nonBlocking) {
 			throw new Error('getSync is only available for nonBlocking instances');
 		}
-		dontWait(() => this.blockingGet(key, callback, noCacheIf));
+		dontWait(() => this.blockingGet(key, callback, noCacheIf, ttl));
 
 		return this.nonBlockingMap.get(key);
 	}
@@ -61,6 +63,7 @@ export class Remembered {
 		key: string,
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
+		_ttl?: number,
 	): PromiseLike<T> {
 		const cached = this.map.get(key);
 		if (cached) {
