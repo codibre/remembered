@@ -1,3 +1,10 @@
+## [0.9.1](https://github.com/codibre/remembered/compare/v0.9.0...v0.9.1) (2022-11-14)
+
+
+### Bug Fixes
+
+* compatibilizing with remembered-redis ([4b00860](https://github.com/codibre/remembered/commit/4b00860a5bc7c973df3f00808944aa0bc1f40dec))
+
 # [0.9.0](https://github.com/codibre/remembered/compare/v0.8.2...v0.9.0) (2022-11-08)
 
 
