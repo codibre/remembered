@@ -1,3 +1,10 @@
+## [0.9.2](https://github.com/codibre/remembered/compare/v0.9.1...v0.9.2) (2022-12-30)
+
+
+### Bug Fixes
+
+* fixing getSync nonBlocking set ([#4](https://github.com/codibre/remembered/issues/4)) ([30a8d35](https://github.com/codibre/remembered/commit/30a8d35ac71d40e8c87fe65ce768234d9bac97e1))
+
 ## [0.9.1](https://github.com/codibre/remembered/compare/v0.9.0...v0.9.1) (2022-11-14)
 
 
