@@ -7,8 +7,8 @@ const defaultConfig = { ttl: 0 };
  * A class that help you remember previous calls for you functions, to avoid new calls while it is not forgotten
  */
 export class Remembered {
-	private map = new Map<string, Promise<any>>();
-	private nonBlockingMap = new Map<string, any>();
+	private map = new Map<string, Promise<unknown>>();
+	private nonBlockingMap = new Map<string, unknown>();
 	private pacer: Pacer<string> | undefined;
 	private removeImmediately: boolean;
 	private onReused?: (...args: any[]) => void;
@@ -28,17 +28,17 @@ export class Remembered {
 	 * @param noCacheIf a optional condition that, when informed, the cache is not kept
 	 * @returns the (now) remembered promise
 	 */
-	get<T>(
+	async get<T>(
 		key: string,
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
 		ttl?: number,
-	): PromiseLike<T> {
+	): Promise<T> {
 		if (this.config.nonBlocking) {
 			if (this.nonBlockingMap.has(key)) {
 				dontWait(() => this.blockingGet(key, callback, noCacheIf, ttl));
 
-				return this.nonBlockingMap.get(key);
+				return this.nonBlockingMap.get(key) as T;
 			}
 		}
 
@@ -56,7 +56,7 @@ export class Remembered {
 		}
 		dontWait(() => this.blockingGet(key, callback, noCacheIf, ttl));
 
-		return this.nonBlockingMap.get(key);
+		return this.nonBlockingMap.get(key) as T | undefined;
 	}
 
 	blockingGet<T>(
@@ -64,19 +64,15 @@ export class Remembered {
 		callback: () => PromiseLike<T>,
 		noCacheIf?: (result: T) => boolean,
 		_ttl?: number,
-	): PromiseLike<T> {
+	): Promise<T> {
 		const cached = this.map.get(key);
 		if (cached) {
 			this.onReused?.(key);
-			return cached;
+			return cached as Promise<T>;
 		}
 		const value = this.loadValue(key, callback, noCacheIf);
 		this.map.set(key, value);
 		this.pacer?.schedulePurge(key);
-
-		if (this.config.nonBlocking) {
-			this.nonBlockingMap.set(key, value);
-		}
 		return value;
 	}
 
@@ -86,12 +82,10 @@ export class Remembered {
 	 * @param getKey a function that returns a remembering key
 	 * @returns the rememberable callback
 	 */
-	wrap<T extends any[], K extends T, R extends PromiseLike<any>>(
+	wrap<T extends any[], K extends T, R extends Promise<any>>(
 		callback: (...args: T) => R,
 		getKey: (...args: K) => string,
-		noCacheIf?: (
-			result: R extends PromiseLike<infer TR> ? TR : never,
-		) => boolean,
+		noCacheIf?: (result: R extends Promise<infer TR> ? TR : never) => boolean,
 	): (...args: T) => R {
 		return (...args: T): R => {
 			const key = getKey(...(args as K));
