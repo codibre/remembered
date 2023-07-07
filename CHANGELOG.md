@@ -1,3 +1,10 @@
+# [0.10.0](https://github.com/codibre/remembered/compare/v0.9.2...v0.10.0) (2023-07-07)
+
+
+### Features
+
+* adding clear cache method ([#5](https://github.com/codibre/remembered/issues/5)) ([27a83fc](https://github.com/codibre/remembered/commit/27a83fc5df143cd7a5dec1ab73429da8d5a9fe52))
+
 ## [0.9.2](https://github.com/codibre/remembered/compare/v0.9.1...v0.9.2) (2022-12-30)
 
 
