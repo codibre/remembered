@@ -93,6 +93,10 @@ export class Remembered {
 		};
 	}
 
+	clearCache(key: string): void | Promise<unknown> {
+		this.map.delete(key);
+	}
+
 	private async loadValue<T>(
 		key: string,
 		load: () => PromiseLike<T>,

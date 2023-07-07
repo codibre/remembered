@@ -3,22 +3,24 @@
 name: test
 on:
   pull_request:
-    branches: [master, develop]
+    branches: [master]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [10.x]
+        node-version: [14.x]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - name: install
         run: npm ci
+      - name: Redis Server in GitHub Actions
+        uses: supercharge/redis-github-action@1.1.0
       - name: 'Test'
         uses: paambaati/codeclimate-action@v2.6.0
         env:
