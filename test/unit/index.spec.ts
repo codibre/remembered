@@ -300,4 +300,15 @@ describe(Remembered.name, () => {
 			expect(result4).toBe(3);
 		});
 	});
+
+	describe(methods.clearCache, () => {
+		it('should remove key', () => {
+			target['map'].set('abc', Promise.resolve('def'));
+
+			const result = target.clearCache('abc');
+
+			expect(result).toBeUndefined();
+			expect(target['map'].has('abc')).toBe(false);
+		});
+	});
 });
