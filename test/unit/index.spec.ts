@@ -1,4 +1,4 @@
-import { Remembered } from '../../src';
+import { Remembered, TtlFunction } from '../../src';
 import { delay } from '../../src/delay';
 import { expectCallsLike, getNames } from './setup';
 
@@ -32,6 +32,7 @@ describe(Remembered.name, () => {
 			expect(result3).toBe(2);
 			expect(result4).toBe(2);
 		});
+
 		it('should remember the last result until the ttl has passed when noCacheIf is informed and returns false', async () => {
 			let count = 0;
 			const getter = jest.fn().mockImplementation(async () => ++count);
@@ -160,6 +161,53 @@ describe(Remembered.name, () => {
 			expectCallsLike(callback, [], []);
 			await delay(1);
 			expectCallsLike(callback, [], []);
+		});
+
+		it('should persist in the remembered with ttl from request', async () => {
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+			const key = 'key value';
+
+			const result1 = await target.get(key, getter, () => false, 30);
+			await delay(60);
+			const result2 = await target.get(key, getter, () => false, 30);
+
+			expectCallsLike(getter, [], []);
+			expect(result1).toBe(1);
+			expect(result2).toBe(2);
+		});
+
+		it('should persist in the remembered with tllFunction', async () => {
+			const ttlFunction: TtlFunction<number> = (
+				_key: string,
+				response?: number,
+			) => {
+				return response! * response! + 10;
+			};
+
+			const target0 = new Remembered({
+				ttl: ttlFunction,
+			});
+
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+			const key = 'key value';
+
+			const result1 = await target0.get(key, getter);
+			await delay(8); // total ttl from result1 (11)
+			const result2 = await target0.get(key, getter);
+			await delay(10); // delay to clean value from result1
+
+			const result3 = await target0.get(key, getter);
+			await delay(12); // total ttl from result3 (14)
+			const result4 = await target0.get(key, getter);
+			await delay(10); // delay to clean value from result3
+
+			expectCallsLike(getter, [], []);
+			expect(result1).toBe(1); // first call getter
+			expect(result2).toBe(1); // value from cache
+			expect(result3).toBe(2); // second call getter
+			expect(result4).toBe(2); // value from cache
 		});
 	});
 

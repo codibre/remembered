@@ -1,22 +1,49 @@
-import { Ttl } from './remembered-config';
+import { RememberedConfig } from './remembered-config';
 import Fifo = require('fast-fifo');
 import { delay } from './delay';
+import { performance } from 'perf_hooks';
 
-export class Pacer<T> {
+export class Pacer<TResponse = unknown, TKey = string> {
 	private purgeTask: PromiseLike<void> | undefined;
 	private toPurge = new Fifo<{
 		purgeTime: number;
-		payload: T;
-		callback?: (payload: T) => void;
+		payload: TKey;
+		callback?: (payload: TKey) => void;
 	}>();
-	private pace: (payload: T) => number;
 
-	constructor(pace: Ttl, private run: (payload: T) => any) {
-		this.pace = typeof pace === 'number' ? () => pace : pace;
+	constructor(
+		private config: RememberedConfig<TResponse, TKey>,
+		private run: (payload: TKey) => any,
+	) {}
+
+	private getTtl(
+		payload: TKey,
+		ttl: number | undefined,
+		response: TResponse,
+	): number {
+		if (ttl !== undefined) return ttl;
+
+		return typeof this.config.ttl === 'number'
+			? this.config.ttl
+			: this.config.ttl(payload, response);
 	}
 
-	schedulePurge(payload: T, callback?: (payload: T) => void) {
-		const purgeTime = Date.now() + this.pace(payload);
+	schedulePurge(
+		payload: TKey,
+		ttl: number | undefined,
+		response: TResponse,
+		callback?: (payload: TKey) => void,
+	) {
+		const now = performance.now();
+		ttl = this.getTtl(payload, ttl, response);
+
+		if (ttl === 0) {
+			this.run(payload);
+			return;
+		}
+
+		const purgeTime = now + ttl;
+
 		this.toPurge.push({ purgeTime, payload, callback });
 		if (!this.purgeTask) {
 			this.purgeTask = this.wait();
@@ -26,7 +53,7 @@ export class Pacer<T> {
 	private async wait(): Promise<void> {
 		const current = this.toPurge.shift();
 		if (current) {
-			const waiting = current.purgeTime - Date.now();
+			const waiting = current.purgeTime - performance.now();
 			if (waiting > 0) {
 				await delay(waiting);
 			}
