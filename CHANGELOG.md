@@ -1,3 +1,10 @@
+# [0.11.0](https://github.com/codibre/remembered/compare/v0.10.0...v0.11.0) (2023-08-30)
+
+
+### Features
+
+* implement getTll from ttlFunction in constructor configuration ([#6](https://github.com/codibre/remembered/issues/6)) ([55674c5](https://github.com/codibre/remembered/commit/55674c5326bcee935f703751af9d8cc4d131fbad))
+
 # [0.10.0](https://github.com/codibre/remembered/compare/v0.9.2...v0.10.0) (2023-07-07)
 
 
