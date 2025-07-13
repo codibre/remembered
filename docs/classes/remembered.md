@@ -2,7 +2,7 @@
 
 # Class: Remembered
 
-A class that help you remember previous calls for you functions, to avoid new calls while it is not forgotten
+A class that help you remember previous calls for you functions, to avoid new calls while it is not forgotten. Supports configurable cache strategies with eviction policies to manage memory usage.
 
 ## Table of contents
 
@@ -28,13 +28,44 @@ A class that help you remember previous calls for you functions, to avoid new ca
 
 \+ **new Remembered**(`config?`: RememberedConfig): [*Remembered*](remembered.md)
 
+Creates a new Remembered instance with optional cache configuration.
+
 #### Parameters:
 
-Name | Type |
-:------ | :------ |
-`config` | RememberedConfig |
+Name | Type | Description |
+:------ | :------ | :------ |
+`config` | RememberedConfig | Configuration object with TTL and optional cache strategy settings |
 
 **Returns:** [*Remembered*](remembered.md)
+
+#### Configuration Options:
+
+- `ttl`: Time to live in milliseconds or a function that returns TTL
+- `evictionPolicy`: Optional cache eviction policy ('LRU', 'MRU', 'FIFO', or undefined for Simple)
+- `capacity`: Maximum number of items to store (required when using eviction policies)
+- `nonBlocking`: Whether to keep persistent last result for background updates
+- `onReused`: Callback function called when a cached value is reused
+
+#### Examples:
+
+```ts
+// Simple cache (default)
+const remembered = new Remembered({ ttl: 1000 });
+
+// LRU cache with capacity limit
+const remembered = new Remembered({
+  ttl: 5000,
+  evictionPolicy: 'LRU',
+  capacity: 100
+});
+
+// Dynamic TTL with MRU eviction
+const remembered = new Remembered({
+  ttl: (key, response) => key.startsWith('user:') ? 30000 : 5000,
+  evictionPolicy: 'MRU',
+  capacity: 50
+});
+```
 
 ## Properties
 
