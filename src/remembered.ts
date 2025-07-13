@@ -1,3 +1,4 @@
+import { createCache } from './cache-strategy/core/cache-factory';
 import { dontWait } from './dont-wait';
 import { Pacer } from './pacer';
 import { RememberedConfig } from './remembered-config';
@@ -9,8 +10,8 @@ const defaultConfig = { ttl: 0 };
  * A class that help you remember previous calls for you functions, to avoid new calls while it is not forgotten
  */
 export class Remembered<TResponse = unknown, TKey = string> {
-	private map = new Map<TKey, Promise<TResponse>>();
-	private nonBlockingMap = new Map<TKey, TResponse>();
+	private cache;
+	private nonBlockingCache;
 	private pacer: Pacer<TResponse, TKey> | undefined;
 	private removeImmediately: boolean;
 	private onReused?: (...args: any[]) => void;
@@ -18,9 +19,11 @@ export class Remembered<TResponse = unknown, TKey = string> {
 	constructor(
 		private config: RememberedConfig<TResponse, TKey> = defaultConfig,
 	) {
+		this.cache = createCache<TResponse, TKey>(config);
+		this.nonBlockingCache = createCache<TResponse, TKey>(config);
 		this.removeImmediately = !config.ttl;
 		this.onReused = config.onReused;
-		this.pacer = new Pacer(config, (key: TKey) => this.map.delete(key));
+		this.pacer = new Pacer(config, (key: TKey) => this.cache.delete(key));
 	}
 
 	/**
@@ -38,10 +41,10 @@ export class Remembered<TResponse = unknown, TKey = string> {
 		ttl?: number,
 	): Promise<R> {
 		if (this.config.nonBlocking) {
-			if (this.nonBlockingMap.has(key)) {
+			const item = this.nonBlockingCache.get(key);
+			if (item !== undefined) {
 				dontWait(() => this.blockingGet(key, callback, noCacheIf, ttl));
-
-				return this.nonBlockingMap.get(key) as R;
+				return item as R;
 			}
 		}
 
@@ -59,7 +62,7 @@ export class Remembered<TResponse = unknown, TKey = string> {
 		}
 		dontWait(() => this.blockingGet(key, callback, noCacheIf, ttl));
 
-		return this.nonBlockingMap.get(key) as R | undefined;
+		return this.nonBlockingCache.get(key) as R | undefined;
 	}
 
 	blockingGet<R extends TResponse>(
@@ -68,13 +71,13 @@ export class Remembered<TResponse = unknown, TKey = string> {
 		noCacheIf?: (result: R) => boolean,
 		ttl?: number,
 	): Promise<R> {
-		const cached = this.map.get(key);
-		if (cached) {
+		const cached = this.cache.get(key);
+		if (cached !== undefined) {
 			this.onReused?.(key);
 			return cached as Promise<R>;
 		}
 		const value = this.loadValue(key, callback, noCacheIf, ttl);
-		this.map.set(key, value);
+		this.cache.set(key, value);
 		return value;
 	}
 
@@ -96,7 +99,7 @@ export class Remembered<TResponse = unknown, TKey = string> {
 	}
 
 	clearCache(key: TKey): void | Promise<unknown> {
-		this.map.delete(key);
+		this.cache.delete(key);
 	}
 
 	private async loadValue<R extends TResponse>(
@@ -109,17 +112,17 @@ export class Remembered<TResponse = unknown, TKey = string> {
 		try {
 			result = await load();
 			if (noCacheIf?.(result)) {
-				this.map.delete(key);
+				this.cache.delete(key);
 			} else if (this.config.nonBlocking) {
-				this.nonBlockingMap.set(key, result);
+				this.nonBlockingCache.set(key, result);
 			}
 			return result;
 		} catch (err) {
-			this.map.delete(key);
+			this.cache.delete(key);
 			throw err;
 		} finally {
 			if (this.removeImmediately) {
-				this.map.delete(key);
+				this.cache.delete(key);
 			} else if (result !== Empty) {
 				this.pacer?.schedulePurge(key, ttl, result);
 			}

@@ -351,12 +351,194 @@ describe(Remembered.name, () => {
 
 	describe(methods.clearCache, () => {
 		it('should remove key', () => {
-			target['map'].set('abc', Promise.resolve('def'));
+			target['cache'].set('abc', Promise.resolve('def'));
 
 			const result = target.clearCache('abc');
 
 			expect(result).toBeUndefined();
-			expect(target['map'].has('abc')).toBe(false);
+			expect(target['cache'].get('abc')).toBeUndefined();
+		});
+	});
+
+	describe('eviction policies', () => {
+		it('should evict least recently used item when using LRU policy', async () => {
+			const lruTarget = new Remembered({
+				ttl: 1000,
+				evictionPolicy: 'LRU',
+				capacity: 2,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await lruTarget.get('a', getter); // 1
+			await lruTarget.get('b', getter); // 2
+			await lruTarget.get('a', getter); // access 'a' again
+			await lruTarget.get('c', getter); // 3, should evict 'b'
+
+			// 'b' should be evicted, so next access should call getter again
+			const result = await lruTarget.get('b', getter);
+			expect(result).toBe(4);
+		});
+
+		it('should evict most recently used item when using MRU policy', async () => {
+			const mruTarget = new Remembered({
+				ttl: 1000,
+				evictionPolicy: 'MRU',
+				capacity: 2,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await mruTarget.get('a', getter); // 1
+			await mruTarget.get('b', getter); // 2
+			await mruTarget.get('a', getter); // access 'a' again (making it most recently used)
+			await mruTarget.get('c', getter); // 3, should evict 'a' (most recently used)
+
+			// 'a' should be evicted, so next access should call getter again
+			const result = await mruTarget.get('a', getter);
+			expect(result).toBe(4);
+		});
+
+		it('should evict first in item when using FIFO policy', async () => {
+			const fifoTarget = new Remembered({
+				ttl: 1000,
+				evictionPolicy: 'FIFO',
+				capacity: 2,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await fifoTarget.get('a', getter); // 1
+			await fifoTarget.get('b', getter); // 2
+			await fifoTarget.get('a', getter); // access 'a' again (shouldn't change order)
+			await fifoTarget.get('c', getter); // 3, should evict 'a' (first in)
+
+			// 'a' should be evicted, so next access should call getter again
+			const result = await fifoTarget.get('a', getter);
+			expect(result).toBe(4);
+		});
+
+		it('should never cache when capacity is 0', async () => {
+			const zeroCapacityTarget = new Remembered({
+				ttl: 1000,
+				evictionPolicy: 'LRU',
+				capacity: 0,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await zeroCapacityTarget.get('a', getter);
+			await zeroCapacityTarget.get('a', getter);
+			expect(count).toBe(2); // Always calls getter
+		});
+
+		it('should use Simple cache when no eviction policy is specified', async () => {
+			const simpleTarget = new Remembered({ ttl: 1000 });
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			// Simple cache has no capacity limits, so all items should be cached
+			for (let i = 0; i < 100; i++) {
+				await simpleTarget.get(`key${i}`, getter);
+			}
+
+			// All items should still be cached
+			for (let i = 0; i < 100; i++) {
+				await simpleTarget.get(`key${i}`, getter);
+			}
+
+			expect(count).toBe(100); // Only called once per key
+		});
+	});
+
+	describe('onReused callback', () => {
+		it('should call onReused when a cached value is reused', async () => {
+			const onReused = jest.fn();
+			const callbackTarget = new Remembered({
+				ttl: 1000,
+				onReused,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await callbackTarget.get('a', getter);
+			await callbackTarget.get('a', getter);
+			expect(onReused).toHaveBeenCalledWith('a');
+			expect(onReused).toHaveBeenCalledTimes(1);
+		});
+
+		it('should call onReused for each cached key', async () => {
+			const onReused = jest.fn();
+			const callbackTarget = new Remembered({
+				ttl: 1000,
+				onReused,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await callbackTarget.get('a', getter);
+			await callbackTarget.get('b', getter);
+			await callbackTarget.get('a', getter);
+			await callbackTarget.get('b', getter);
+
+			expect(onReused).toHaveBeenCalledWith('a');
+			expect(onReused).toHaveBeenCalledWith('b');
+			expect(onReused).toHaveBeenCalledTimes(2);
+		});
+
+		it('should not call onReused for new cache entries', async () => {
+			const onReused = jest.fn();
+			const callbackTarget = new Remembered({
+				ttl: 1000,
+				onReused,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await callbackTarget.get('a', getter);
+			expect(onReused).not.toHaveBeenCalled();
+		});
+
+		it('should not call onReused when cache is cleared', async () => {
+			const onReused = jest.fn();
+			const callbackTarget = new Remembered({
+				ttl: 1000,
+				onReused,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			await callbackTarget.get('a', getter);
+			callbackTarget.clearCache('a');
+			await callbackTarget.get('a', getter);
+			expect(onReused).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('non-blocking with eviction policies', () => {
+		it('should use same eviction policy for non-blocking cache', async () => {
+			const nonBlockingTarget = new Remembered({
+				ttl: 1000,
+				nonBlocking: true,
+				evictionPolicy: 'LRU',
+				capacity: 2,
+			});
+			let count = 0;
+			const getter = jest.fn().mockImplementation(async () => ++count);
+
+			// Fill cache
+			await nonBlockingTarget.get('a', getter);
+			await nonBlockingTarget.get('b', getter);
+			await nonBlockingTarget.get('c', getter); // Should evict 'a'
+
+			// Use getSync to test non-blocking cache
+			const result1 = nonBlockingTarget.getSync('a', getter);
+			const result2 = nonBlockingTarget.getSync('b', getter);
+			const result3 = nonBlockingTarget.getSync('c', getter);
+
+			expect(result1).toBeUndefined(); // 'a' was evicted
+			expect(result2).toBe(2); // 'b' still exists
+			expect(result3).toBe(3); // 'c' still exists
 		});
 	});
 });
