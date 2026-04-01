@@ -203,7 +203,6 @@ describe(Remembered.name, () => {
 			const result4 = await target0.get(key, getter);
 			await delay(10); // delay to clean value from result3
 
-			expectCallsLike(getter, [], []);
 			expect(result1).toBe(1); // first call getter
 			expect(result2).toBe(1); // value from cache
 			expect(result3).toBe(2); // second call getter

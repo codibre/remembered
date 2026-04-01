@@ -1,14 +1,23 @@
 import { dontWait } from './dont-wait';
 import { Pacer } from './pacer';
-import { RememberedConfig } from './remembered-config';
+import { RememberedConfig, ResultType } from './remembered-config';
 
 const Empty = Symbol('Empty');
 
 const defaultConfig = { ttl: 0 };
+
+function isObj(cached: any): cached is {} {
+	return cached && typeof cached === 'object';
+}
+
 /**
  * A class that help you remember previous calls for you functions, to avoid new calls while it is not forgotten
  */
-export class Remembered<TResponse = unknown, TKey = string> {
+export class Remembered<
+	TResponse = unknown,
+	TKey = string,
+	TResultType extends ResultType = 'mutable',
+> {
 	private map = new Map<TKey, Promise<TResponse>>();
 	private nonBlockingMap = new Map<TKey, TResponse>();
 	private pacer: Pacer<TResponse, TKey> | undefined;
@@ -16,7 +25,11 @@ export class Remembered<TResponse = unknown, TKey = string> {
 	private onReused?: (...args: any[]) => void;
 
 	constructor(
-		private config: RememberedConfig<TResponse, TKey> = defaultConfig,
+		private config: RememberedConfig<
+			TResponse,
+			TKey,
+			TResultType
+		> = defaultConfig,
 	) {
 		this.removeImmediately = !config.ttl;
 		this.onReused = config.onReused;
@@ -36,7 +49,7 @@ export class Remembered<TResponse = unknown, TKey = string> {
 		callback: () => PromiseLike<R>,
 		noCacheIf?: (result: R) => boolean,
 		ttl?: number,
-	): Promise<R> {
+	): Promise<TResultType extends 'readonly' ? Readonly<R> : R> {
 		if (this.config.nonBlocking) {
 			if (this.nonBlockingMap.has(key)) {
 				dontWait(() => this.blockingGet(key, callback, noCacheIf, ttl));
@@ -67,7 +80,7 @@ export class Remembered<TResponse = unknown, TKey = string> {
 		callback: () => PromiseLike<R>,
 		noCacheIf?: (result: R) => boolean,
 		ttl?: number,
-	): Promise<R> {
+	): Promise<TResultType extends 'readonly' ? Readonly<R> : R> {
 		const cached = this.map.get(key);
 		if (cached) {
 			this.onReused?.(key);
@@ -88,7 +101,7 @@ export class Remembered<TResponse = unknown, TKey = string> {
 		callback: (...args: T) => R,
 		getKey: (...args: K) => TKey,
 		noCacheIf?: (result: R extends Promise<infer TR> ? TR : never) => boolean,
-	): (...args: T) => R {
+	): (...args: T) => TResultType extends 'readonly' ? Readonly<R> : R {
 		return (...args: T): R => {
 			const key = getKey(...(args as K));
 			return this.get(key, () => callback(...args), noCacheIf) as R;
@@ -111,7 +124,24 @@ export class Remembered<TResponse = unknown, TKey = string> {
 			if (noCacheIf?.(result)) {
 				this.map.delete(key);
 			} else if (this.config.nonBlocking) {
+				if (this.config.resultType === 'readonly') {
+					const cached = this.nonBlockingMap.get(key) as R | undefined;
+					let changed = true;
+					if (isObj(cached) && isObj(result)) {
+						changed = false;
+						for (const prop in result) {
+							if (result[prop] !== cached[prop]) {
+								changed = true;
+								break;
+							}
+						}
+						if (!changed) return (result = cached);
+					}
+					if (changed) result = Object.freeze(result);
+				}
 				this.nonBlockingMap.set(key, result);
+			} else if (isObj(result) && this.config.resultType === 'readonly') {
+				result = Object.freeze(result);
 			}
 			return result;
 		} catch (err) {
