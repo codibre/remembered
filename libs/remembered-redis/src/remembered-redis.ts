@@ -42,21 +42,21 @@ function prepareConfig(config: RememberedRedisConfig) {
 		config.ttl = 0;
 	} else if (typeof redisTtl === 'function') {
 		const fTtl = typeof ttl === 'number' ? () => ttl : ttl;
-		config.ttl = ((r: unknown) => {
-			const rTtl = redisTtl(r as string);
+		config.ttl = (r: unknown) => {
+			const rTtl = redisTtl(r);
 
 			return rTtl
-				? Math.min(typeof fTtl === 'function' ? fTtl(r as string) : fTtl, rTtl)
+				? Math.min(typeof fTtl === 'function' ? fTtl(r) : fTtl, rTtl)
 				: 0;
-		});
+		};
 	} else if (typeof ttl === 'number') {
 		config.ttl = redisTtl ? Math.min(ttl, redisTtl) : 0;
 	} else {
-		config.ttl = ((t: unknown) => {
-			const bTtl = ttl(t as string);
+		config.ttl = (t: unknown) => {
+			const bTtl = ttl(t);
 
 			return bTtl && redisTtl ? Math.min(bTtl, redisTtl) : 0;
-		});
+		};
 	}
 
 	return config;

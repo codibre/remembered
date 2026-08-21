@@ -1,1 +1,1 @@
-export declare const delay: typeof import("timers/promises").setTimeout;
+export declare const delay: typeof import('timers/promises').setTimeout;

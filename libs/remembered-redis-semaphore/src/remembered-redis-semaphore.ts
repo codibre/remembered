@@ -89,7 +89,7 @@ export class RememberedRedisSemaphore implements Semaphore {
 	 * @param ignoreAcquiringError true if acquiring errors can be ignored. Default true
 	 * @returns the callback result
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	async wrap<Args extends any[], T>(
 		callback: (...args: Args) => Promise<T>,
 		getKey: (...args: Args) => string,
