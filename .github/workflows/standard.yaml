@@ -1,0 +1,28 @@
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+      - ".scafflater/**"
+  workflow_dispatch:
+
+name: Standard
+
+jobs:
+  ci:
+    name: CI - Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Test
+        uses: ./.github/actions/build-and-test
+        with:
+          node-auth-token: ${{ secrets.GHA_PACKAGES }}
+          sonar-token: ${{ secrets.SONARCLOUD_TOKEN }}
+          cc-test-reporter-id: ${{ secrets.CC_TEST_REPORTER_ID }}

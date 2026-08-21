@@ -1,0 +1,73 @@
+name: 'Persist Cache'
+description: 'Downloads artifacts and updates build cache with new artifacts'
+
+inputs:
+  github-token:
+    description: 'GitHub token for artifact operations'
+    required: true
+    default: ${{ github.token }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: .
+      continue-on-error: true
+
+    - name: Check if artifacts were downloaded
+      shell: bash
+      run: |
+        echo "Checking for build artifacts..."
+        if [ -d ".turbo" ] || [ -d ".jest" ] || find libs -name ".turbo" -type d | grep -q . || find libs -name ".jest" -type d | grep -q .; then
+          echo "✅ Build artifacts found"
+          echo "ARTIFACTS_FOUND=true" >> $GITHUB_ENV
+        else
+          echo "⚠️ No build artifacts found, skipping cache update"
+          echo "ARTIFACTS_FOUND=false" >> $GITHUB_ENV
+        fi
+
+    - name: Save updated build cache
+      if: env.ARTIFACTS_FOUND == 'true'
+      shell: bash
+      run: |
+        echo "🗑️ Attempting to delete existing cache..."
+        # Try to delete existing cache using GitHub CLI
+        CACHE_KEY="build-${{ runner.os }}-${{ github.ref_name }}"
+        echo "Cache key: $CACHE_KEY"
+
+        # List and delete existing cache entries
+        gh cache list --key "$CACHE_KEY" --json key,id | jq -r '.[].id' | while read cache_id; do
+          if [ -n "$cache_id" ]; then
+            echo "Deleting cache ID: $cache_id"
+            gh cache delete "$cache_id" || echo "Failed to delete cache $cache_id (may not exist)"
+          fi
+        done
+
+        echo "🔄 Saving new cache..."
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      continue-on-error: true
+
+    - name: Save build cache
+      if: env.ARTIFACTS_FOUND == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          .turbo
+          .jest
+          libs/*/.turbo
+          libs/*/.jest
+        key: build-${{ runner.os }}-${{ github.ref_name }}
+      continue-on-error: true
+
+    - name: Cache update status
+      shell: bash
+      run: |
+        if [ "$ARTIFACTS_FOUND" = "true" ]; then
+          echo "✅ Build cache deletion and update process completed"
+        else
+          echo "⚠️ Build cache update skipped - no artifacts found"
+        fi

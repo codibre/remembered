@@ -17,6 +17,10 @@
     "prettier:fix": "turbo prettier:fix --concurrency=1",
     "patch": "npm version patch -m \"release: version %s\" && git push --tags && git push",
     "test": "turbo test",
+    "pretest:cov": "pnpm run build && rimraf lcov.info",
+    "test:cov": "turbo test:cov --concurrency=1",
+    "posttest:cov": "rimraf coverage && mkdir -p coverage && npx lcov-result-merger '**/lcov.info'  coverage/lcov.info --prepend-path-fix . --prepend-source-files",
+    "commit:validate": "pnpm exec commitlint --from HEAD~1 --to HEAD --verbose",
     "prepare": "husky"
   },
   "release": {
