@@ -42,21 +42,21 @@ function prepareConfig(config: RememberedRedisConfig) {
 		config.ttl = 0;
 	} else if (typeof redisTtl === 'function') {
 		const fTtl = typeof ttl === 'number' ? () => ttl : ttl;
-		config.ttl = (r: unknown) => {
-			const rTtl = redisTtl(r);
+		config.ttl = ((r: unknown) => {
+			const rTtl = redisTtl(r as string);
 
 			return rTtl
-				? Math.min(typeof fTtl === 'function' ? fTtl(r) : fTtl, rTtl)
+				? Math.min(typeof fTtl === 'function' ? fTtl(r as string) : fTtl, rTtl)
 				: 0;
-		};
+		}) as any;
 	} else if (typeof ttl === 'number') {
 		config.ttl = redisTtl ? Math.min(ttl, redisTtl) : 0;
 	} else {
-		config.ttl = (t: unknown) => {
-			const bTtl = ttl(t);
+		config.ttl = ((t: unknown) => {
+			const bTtl = ttl(t as string);
 
 			return bTtl && redisTtl ? Math.min(bTtl, redisTtl) : 0;
-		};
+		}) as any;
 	}
 
 	return config;
@@ -240,11 +240,12 @@ export class RememberedRedis extends Remembered {
 							}
 						}));
 				} else {
-					this.savingObjects.entries.set(redisKey, [realTtl, resultCopy]);
+					const savingObjects = this.savingObjects!;
+					savingObjects.entries.set(redisKey, [realTtl, resultCopy]);
 					const { maxResultsPerSave } = this.alternativePersistence;
 					if (
 						maxResultsPerSave &&
-						this.savingObjects.entries.size >= maxResultsPerSave
+						savingObjects.entries.size >= maxResultsPerSave
 					) {
 						this.waitSaving = false;
 						this.savingObjects = undefined;
@@ -271,7 +272,7 @@ export class RememberedRedis extends Remembered {
 		if (!maxResultsPerSave || savingObjects.entries.size < maxResultsPerSave) {
 			this.savingObjects = savingObjects;
 			this.waitSaving = true;
-			await delay(this.alternativePersistence.maxSavingDelay);
+			await delay(this.alternativePersistence!.maxSavingDelay);
 			this.waitSaving = false;
 			this.savingObjects = undefined;
 		}
@@ -309,7 +310,7 @@ export class RememberedRedis extends Remembered {
 		}
 		for (const [ttl, [key, entries, ttls]] of ttlSavingObjects) {
 			yield this.persist(entries, (value) =>
-				this.alternativePersistence.save(key, value, ttl),
+				this.alternativePersistence!.save(key, value, ttl),
 			);
 			yield* this.saveKeys(ttls, key);
 		}

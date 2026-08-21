@@ -363,6 +363,9 @@ importers:
 
   libs/remembered-redis-semaphore:
     dependencies:
+      '@remembered/redis':
+        specifier: workspace:^
+        version: link:../remembered-redis
       remembered:
         specifier: workspace:^
         version: link:../remembered
@@ -370,9 +373,6 @@ importers:
       '@release-it/conventional-changelog':
         specifier: ^9.0.2
         version: 9.0.4(conventional-commits-filter@5.0.0)(conventional-commits-parser@6.4.0)(release-it@18.1.2(@types/node@22.20.1)(typescript@5.9.3))
-      '@remembered/redis':
-        specifier: workspace:^
-        version: link:../remembered-redis
       '@stylistic/eslint-plugin':
         specifier: ^5.3.1
         version: 5.10.0(eslint@9.39.5(jiti@2.6.1))

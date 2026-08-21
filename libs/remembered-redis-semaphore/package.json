@@ -72,6 +72,7 @@
     "redis-semaphore": "^5.5.0"
   },
   "dependencies": {
+    "@remembered/redis": "workspace:^",
     "remembered": "workspace:^"
   },
   "devDependencies": {
