@@ -1,0 +1,13 @@
+{
+  "hideGenerator": true,
+  "theme": "markdown",
+  "out": "docs",
+  "readme": "none",
+  "name": "@remembered/redis",
+  "includeVersion": true,
+  "disableSources": true,
+  "entryPoints": ["src/index.ts"],
+  "exclude": [
+    "index.ts"
+  ]
+}

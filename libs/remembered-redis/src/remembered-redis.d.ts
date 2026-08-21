@@ -1,0 +1,61 @@
+import { Remembered } from 'remembered';
+import { RememberedRedisConfig } from './remembered-redis-config';
+import { RedisLike, RequiredField } from './get-semaphore-config';
+import { Redis } from 'ioredis';
+export declare const DEFAULT_LOCK_TIMEOUT = 10000;
+export declare const DEFAULT_ACQUIRE_TIMEOUT = 60000;
+export declare const DEFAULT_RETRY_INTERVAL = 100;
+export declare const DEFAULT_REFRESH_INTERVAL = 8000;
+export declare const EMPTY: unique symbol;
+export declare class RememberedRedis extends Remembered {
+	private settings;
+	private readonly semaphoreConfig;
+	private readonly redisPrefix;
+	private readonly redisTtl?;
+	private readonly tryTo;
+	private readonly dontWait;
+	private readonly onCache?;
+	private readonly onError?;
+	private readonly alternativePersistence?;
+	private savingObjects?;
+	private waitSaving;
+	private savingPromise?;
+	private readonly redis;
+	constructor(
+		settings: RequiredField<RememberedRedisConfig, 'semaphore'>,
+		redis: RedisLike,
+	);
+	constructor(settings: Omit<RememberedRedisConfig, 'semaphore'>, redis: Redis);
+	constructor(settings: RememberedRedisConfig, redis: Redis);
+	blockingGet<T>(
+		key: string,
+		callback: () => PromiseLike<T>,
+		noCacheIf?: ((result: T) => boolean) | undefined,
+		ttl?: number | undefined,
+	): Promise<T>;
+	getFromCache<T>(
+		key: string,
+		noSemaphore?: boolean,
+	): Promise<T | typeof EMPTY>;
+	runAndCache<T>(
+		key: string,
+		callback: () => PromiseLike<T>,
+		noCacheIf?: ((result: T) => boolean) | undefined,
+		ttl?: number,
+	): Promise<T>;
+	private getResult;
+	private acquire;
+	private prepareRelease;
+	updateCache<T>(cacheKey: string, result: T, ttl?: number): Promise<void>;
+	private prepareAccumulatingPromise;
+	private persistKeys;
+	private generateSavingPromises;
+	private try;
+	private saveKeys;
+	private get serializer();
+	private persist;
+	clearCache(key: string): Promise<number>;
+	private tryCache;
+	private getFromCacheInternal;
+	private getRedisKey;
+}

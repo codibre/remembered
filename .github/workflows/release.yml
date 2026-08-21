@@ -1,0 +1,64 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  HUSKY: 0
+  CI: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24.x"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build --if-present
+
+      - name: Get OIDC Token
+        id: oidc
+        run: |
+          IDENTITY_TOKEN=$(curl -sL "${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://registry.npmjs.org" \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN}" | jq -r '.value')
+          NPM_TOKEN=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"token": "${IDENTITY_TOKEN}"}' \
+            "https://registry.npmjs.org/-/npm/v1/oauth/token" | jq -r '.token')
+          echo "npm-token=${NPM_TOKEN}" >> $GITHUB_OUTPUT
+
+      - name: Configure npm with OIDC token
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ steps.oidc.outputs.npm-token }}" > ~/.npmrc
+          echo "registry=https://registry.npmjs.org/" >> ~/.npmrc
+          echo "always-auth=true" >> ~/.npmrc
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Run release-it for each package in the workspace
+          for pkg_dir in libs/*/; do
+            pkg_name=$(node -p "require('./${pkg_dir}package.json').name")
+            echo "Releasing ${pkg_name}..."
+            cd "${pkg_dir}" && pnpm release-it --ci --skipChecks || true
+            cd ../..
+          done

@@ -1,98 +1,63 @@
 {
-  "name": "remembered",
-  "description": "Easy memory cache and semaphore",
-  "version": "0.11.0",
-  "author": {
-    "name": "Thiago O Santos <tos.oliveira@gmail.com>"
-  },
-  "engines": {
-    "node": ">=10"
-  },
-  "files": [
-    "dist"
-  ],
-  "main": "dist/index.js",
-  "scripts": {
-    "doc": "npx typedoc",
-    "lint": "npm run lint:format && npm run lint:style",
-    "lint:fix": "npm run lint:format:fix && npm run lint:style:fix",
-    "build": "tsc -p tsconfig.build.json",
-    "test": "jest test/unit",
-    "test:watch": "jest test/unit --watch",
-    "test:coverage": "jest test/unit --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest test/e2e",
-    "clear": "npm run clear:build && npm run clear:modules",
-    "clear:build": "del-cli ./dist",
-    "clear:modules": "del-cli ./node_modules",
-    "prebuild": "npm run clear:build && del-cli tsconfig.tsbuildinfo",
-    "preaction:verify:update-modules": "npm run action:verify:update-modules:check",
-    "action:verify:update-modules": "npm run action:verify:update-modules:reinstall && npm run action:verify:update-modules:clean",
-    "action:verify:update-modules:clean": "del-cli .check",
-    "lint:format": "prettier --check '{src,test}/**/*.ts'",
-    "lint:format:fix": "prettier --write '{src,test}/**/*.ts'",
-    "lint:style": "eslint '**/*.ts'",
-    "lint:style:fix": "eslint '**/*.ts' --fix",
-    "prepare": "husky install",
-    "prepublishOnly": "npm run build"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "testRegex": ".spec.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "preset": "ts-jest",
-    "coverageDirectory": "./coverage",
-    "collectCoverageFrom": [
-      "./src/**/*.ts"
-    ],
-    "testEnvironment": "node"
-  },
-  "directories": {
-    "test": "test"
-  },
+  "name": "remembered-monorepo",
+  "version": "0.0.0",
+  "description": "Monorepo for @remembered packages",
   "repository": {
     "type": "git",
-    "url": "https://github.com/codibre/remembered.git"
+    "url": "https://github.com/codibre/remembered"
   },
-  "homepage": "https://github.com/codibre/remembered#readme",
-  "bugs": {
-    "url": "https://github.com/codibre/remembered/issues"
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "build:force": "turbo build --force",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix --concurrency=1",
+    "lint:staged": "turbo lint:staged --concurrency=1",
+    "prettier": "turbo prettier --concurrency=1",
+    "prettier:fix": "turbo prettier:fix --concurrency=1",
+    "patch": "npm version patch -m \"release: version %s\" && git push --tags && git push",
+    "test": "turbo test",
+    "prepare": "husky"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
   },
   "keywords": [
-    "local",
     "cache",
     "semaphore",
-    "memory"
+    "memory",
+    "redis",
+    "nestjs",
+    "monorepo"
   ],
+  "engines": {
+    "node": "24"
+  },
+  "author": "Codibre",
   "license": "MIT",
   "devDependencies": {
-    "@codibre/confs": "1.1.0",
-    "@types/fast-fifo": "^1.0.0",
-    "@types/jest": "^27.0.2",
-    "@types/node": "^16.9.6",
-    "@typescript-eslint/eslint-plugin": "^4.31.2",
-    "@typescript-eslint/parser": "^4.31.2",
-    "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^4.0.0",
-    "eslint-plugin-unused-imports": "^1.1.5",
-    "husky": "^7.0.2",
-    "jest": "^27.2.1",
-    "prettier": "^2.4.1",
-    "ts-jest": "^27.0.5",
-    "ts-loader": "^9.2.6",
-    "ts-node": "^10.2.1",
-    "typedoc": "^0.23.14",
-    "typedoc-plugin-markdown": "^3.11.1",
-    "typescript": "~4.6.0"
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@stylistic/eslint-plugin": "^5.3.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.44.0",
+    "@typescript-eslint/parser": "^8.44.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-unused-imports": "^4.2.0",
+    "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "jest": "^30.1.3",
+    "lint-staged": "^16.1.6",
+    "prettier": "^3.6.2",
+    "release-it": "^18.1.2",
+    "@release-it/conventional-changelog": "^9.0.2",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2"
   },
-  "dependencies": {
-    "fast-fifo": "^1.0.0"
-  }
+  "packageManager": "pnpm@10.13.1"
 }
