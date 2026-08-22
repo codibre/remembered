@@ -13,7 +13,7 @@
   ],
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "nest build",
     "test": "TZ=UTC jest --runInBand --forceExit",
     "test:cov": "jest --runInBand --coverage --forceExit",
     "lint": "pnpm run lint:format && pnpm run lint:style",

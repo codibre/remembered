@@ -13,7 +13,7 @@
   ],
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "nest build",
     "test": "jest --runInBand",
     "lint": "pnpm run lint:format && pnpm run lint:style",
     "lint:fix": "pnpm run lint:format:fix && pnpm run lint:style:fix",

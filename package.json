@@ -17,9 +17,9 @@
     "prettier:fix": "turbo prettier:fix --concurrency=1",
     "patch": "npm version patch -m \"release: version %s\" && git push --tags && git push",
     "test": "turbo test",
-    "pretest:cov": "pnpm run build && rimraf lcov.info",
+    "pretest:cov": "pnpm run build && rm -f lcov.info",
     "test:cov": "turbo test:cov --concurrency=1",
-    "posttest:cov": "rimraf coverage && mkdir -p coverage && npx lcov-result-merger '**/lcov.info'  coverage/lcov.info --prepend-path-fix . --prepend-source-files",
+    "posttest:cov": "rm -rf coverage && mkdir -p coverage && npx lcov-result-merger '**/lcov.info'  coverage/lcov.info --prepend-path-fix . --prepend-source-files",
     "commit:validate": "pnpm exec commitlint --from HEAD~1 --to HEAD --verbose",
     "prepare": "husky"
   },
@@ -63,7 +63,8 @@
     "release-it": "^18.1.2",
     "@release-it/conventional-changelog": "^9.0.2",
     "turbo": "^2.5.6",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "@nestjs/cli": "^11.0.10"
   },
   "packageManager": "pnpm@10.13.1"
 }
