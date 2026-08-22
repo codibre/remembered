@@ -1,0 +1,22 @@
+name: test
+on:
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26.x"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Redis Server in GitHub Actions
+        uses: supercharge/redis-github-action@v1.8.1
+      - name: Run tests
+        run: npm test

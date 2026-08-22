@@ -1,38 +1,41 @@
-# compiled output
-/dist
-/node_modules
+# Dependencies
+node_modules/
 
-# Logs
-logs
-*.log
+# Build outputs
+dist/
+
+# Lock files (keep root pnpm-lock.yaml, but not stray ones)
+*/package-lock.json
+*/yarn.lock
+*/bun.lock
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug logs
 npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 
-# OS
-.DS_Store
+# Test coverage
+coverage/
+.nyc_output/
 
-# Tests
-/coverage
-/.nyc_output
+# Temp files
+*.tsbuildinfo
+.check/
+.dump.rdb
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# Husky internals
+.husky/.gitignore
 
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-.env
-.npmrc
-.scannerwork
+# Turbo cache
+.turbo/
