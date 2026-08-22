@@ -1,6 +1,0 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.valueSerializer = void 0;
-const multi_serializer_1 = require("multi-serializer");
-exports.valueSerializer = new multi_serializer_1.Serializer(new multi_serializer_1.JsonStrategy());
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidmFsdWUtc2VyaWFsaXplci5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbInZhbHVlLXNlcmlhbGl6ZXIudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsdURBQTREO0FBRS9DLFFBQUEsZUFBZSxHQUFHLElBQUksNkJBQVUsQ0FBQyxJQUFJLCtCQUFZLEVBQUUsQ0FBQyxDQUFDIiwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgSnNvblN0cmF0ZWd5LCBTZXJpYWxpemVyIH0gZnJvbSAnbXVsdGktc2VyaWFsaXplcic7XG5cbmV4cG9ydCBjb25zdCB2YWx1ZVNlcmlhbGl6ZXIgPSBuZXcgU2VyaWFsaXplcihuZXcgSnNvblN0cmF0ZWd5KCkpO1xuIl19

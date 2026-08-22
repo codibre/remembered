@@ -7,7 +7,7 @@ import {
 	RememberedRedisSemaphoreSettings,
 } from '../../src';
 import { promisify } from 'util';
-import { defaultLockOptions } from 'src/get-semaphore-config';
+import { defaultLockOptions } from '../../src/get-semaphore-config';
 import { Lock } from 'redis-semaphore/lib/Lock';
 
 const proto = RememberedRedisSemaphore.prototype;

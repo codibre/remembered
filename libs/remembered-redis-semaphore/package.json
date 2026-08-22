@@ -46,7 +46,8 @@
     "moduleNameMapper": {
       "^src/(.*)": "<rootDir>/src/$1",
       "^test/(.*)": "<rootDir>/test/$1"
-    }
+    },
+    "moduleDirectories": ["node_modules", "../../node_modules"]
   },
   "repository": {
     "type": "git",

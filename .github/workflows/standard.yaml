@@ -13,6 +13,16 @@ jobs:
   ci:
     name: CI - Build and Test
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,5 +34,4 @@ jobs:
         uses: ./.github/actions/build-and-test
         with:
           node-auth-token: ${{ secrets.GHA_PACKAGES }}
-          sonar-token: ${{ secrets.SONARCLOUD_TOKEN }}
           cc-test-reporter-id: ${{ secrets.CC_TEST_REPORTER_ID }}

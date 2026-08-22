@@ -266,7 +266,7 @@ describe('index.ts', () => {
 			const releaseSemaphore = await target['acquire'](key);
 			async function release() {
 				await delay(100);
-				releaseSemaphore();
+				releaseSemaphore!();
 			}
 			async function checkCalls() {
 				await delay(50);
@@ -293,7 +293,7 @@ describe('index.ts', () => {
 			async function release() {
 				await delay(100);
 				await redis.set(target['getRedisKey'](key), '"cached result"');
-				releaseSemaphore();
+				releaseSemaphore!();
 			}
 
 			const [result] = await Promise.all([
@@ -317,7 +317,7 @@ describe('index.ts', () => {
 
 			const result = await target['acquire'](key);
 
-			expect(result()).toEqual('wrapped release');
+			expect(result!()).toEqual('wrapped release');
 			expect(target['dontWait']).toHaveCallsLike(['my release function']);
 		});
 
