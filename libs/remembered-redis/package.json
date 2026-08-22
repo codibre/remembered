@@ -43,6 +43,10 @@
     "testEnvironment": "node",
     "setupFilesAfterEnv": [
       "./test/setup.ts"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules",
+      "dist"
     ]
   },
   "repository": {

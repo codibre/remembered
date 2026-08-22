@@ -42,6 +42,10 @@
     "testEnvironment": "node",
     "setupFilesAfterEnv": [
       "./test/jest-setup.ts"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules",
+      "dist"
     ]
   },
   "repository": {

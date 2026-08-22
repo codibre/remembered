@@ -47,7 +47,14 @@
       "^src/(.*)": "<rootDir>/src/$1",
       "^test/(.*)": "<rootDir>/test/$1"
     },
-    "moduleDirectories": ["node_modules", "../../node_modules"]
+    "moduleDirectories": [
+      "node_modules",
+      "../../node_modules"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules",
+      "dist"
+    ]
   },
   "repository": {
     "type": "git",

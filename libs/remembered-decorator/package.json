@@ -39,7 +39,11 @@
     "collectCoverageFrom": [
       "./src/**/*.ts"
     ],
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "transformIgnorePatterns": [
+      "node_modules",
+      "dist"
+    ]
   },
   "repository": {
     "type": "git",
