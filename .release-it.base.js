@@ -99,7 +99,7 @@ module.exports = {
       },
       writerOpts: {
         commitPartial: commitTemplate,
-        headerPartial: '## [{{version}}]({{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{packageName}}@{{version}}) ({{date}})',
+        headerPartial: function(context) { return `## [${context.version}](${context.host}/${context.owner}/${context.repository}/compare/${context.previousTag}...${context.packageName}@${context.version}) (${context.date})`; },
         finalizeContext: function (context) {
           context.packageName = packageName;
           return context;
