@@ -1,1 +1,3 @@
-module.exports = require('../../.release-it.base');
+const baseConfig = require('../../.release-it.base.js');
+
+module.exports = baseConfig;

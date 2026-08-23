@@ -1,138 +1,83 @@
-const fs = require('fs');
-const path = require('path');
+const { execSync } = require("child_process");
+const path = require("path");
 
-const commitTemplatePath = path.resolve(__dirname, 'commit.hbs');
-let commitTemplate = fs.existsSync(commitTemplatePath)
-  ? fs.readFileSync(commitTemplatePath).toString()
-  : '#### {{subject}}\n\n{{#if body}}{{{body}}}{{/if}}';
+console.log("[DEBUG] .release-it.js is being loaded..."); 
 
-// Determine repository URL (prefer package.json repository, fall back to git remote)
-function normalizeRepoUrl(raw) {
-  if (!raw) return null;
-  let url = raw.replace(/^git\+/, '').replace(/\.git$/, '');
-  const sshMatch = url.match(/^git@([^:]+):(.+)$/);
-  if (sshMatch) {
-    url = `https://${sshMatch[1]}/${sshMatch[2]}`;
+try {
+  const pkgPath = path.resolve(process.cwd(), "package.json");
+  const pkgName = require(pkgPath).name;
+  
+  let lastTag = null;
+  
+  try {
+    lastTag = execSync(`git describe --tags --match="${pkgName}@*" --abbrev=0`, { encoding: "utf8", stdio: "pipe" }).trim();
+  } catch (e) {
+    // 128 indica ausência de tags (primeira release). Qualquer outro erro é propagado.
+    if (e.status !== 128) throw e;
   }
-  url = url.replace(/^ssh:\/\//, 'https://');
-  return url;
+  
+  // Se não há tag, avalia todo o histórico do diretório (.)
+  const logCmd = lastTag 
+    ? `git log ${lastTag}..HEAD --oneline -- .` 
+    : `git log --oneline -- .`;
+    
+  const log = execSync(logCmd, { encoding: "utf8", stdio: "pipe" });
+
+  const hasRelevantCommits = /^[a-f0-9]+\s+(feat|fix)(\(.*\))?!?:|BREAKING CHANGE:/m.test(log);
+
+  if (!hasRelevantCommits) {
+    const timeframe = lastTag ? `since ${lastTag}` : `in history`;
+    console.log(`\n\x1b[33m[release-it] No feat or fix commits found for ${pkgName} ${timeframe}. Skipping release.\x1b[0m\n`);
+    process.exit(0); 
+  }
+} catch (e) {
+  console.error("[DEBUG] Pre-check failed. Aborting to prevent false bumps.\nError:", e.message || e);
+  process.exit(1);
 }
 
-function detectRepoUrl() {
-  try {
-    const pkgPath = path.resolve(process.cwd(), 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath).toString());
-      const repo = pkg.repository && (pkg.repository.url || pkg.repository);
-      const normalized = normalizeRepoUrl(repo);
-      if (normalized) return normalized;
-    }
-  } catch (e) {}
-
-  try {
-    const { execSync } = require('child_process');
-    const raw = execSync('git config --get remote.origin.url', { encoding: 'utf8' }).trim();
-    const normalized = normalizeRepoUrl(raw);
-    if (normalized) return normalized;
-  } catch (e) {}
-
-  return null;
-}
-
-const typeMap = {
-  feat: 'Features:',
-  fix: 'Fixes:',
-}
-
-function getPackageName() {
-  try {
-    const pkgPath = path.resolve(process.cwd(), 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      return pkg.name;
-    }
-  } catch (e) {}
-  return null;
-}
-
-const packageName = getPackageName();
-const repoUrl = detectRepoUrl();
-if (repoUrl && commitTemplate.indexOf('/commit/{{hash}}') !== -1) {
-  commitTemplate = commitTemplate.replace(/https?:\/\/[^\s\/]+\/[\w.-]+\/[\w.-]+\/commit\/\{\{hash\}\}/g, `${repoUrl}/commit/{{hash}}`);
-}
-if (commitTemplate.indexOf('__REPO_URL__') !== -1) {
-  commitTemplate = commitTemplate.replace(/__REPO_URL__/g, repoUrl);
-}
-
-/** @type {import('release-it').ReleaseConfig} **/
+// 2. Configuração padrão
 module.exports = {
-  git: {
-    tagName: '${npm.name}@${version}',
-    commitMessage: 'chore(${npm.name}): release v${version} [skip ci]',
-    requireCleanWorkingDir: false,
-    commitsPath: '.',
-    push: true,
-    pushRepo: 'origin',
-    requireCommits: false
+  "$schema": "https://unpkg.com/release-it@19/schema/release-it.json",
+  "git": {
+    "tagName": "${npm.name}@${version}",
+    "tagMatch": "${npm.name}@*",
+    "commitMessage": "chore(${npm.name}): release v${version} [skip ci]",
+    "requireCleanWorkingDir": false,
+    "commitsPath": ".",
+    "push": true,
+    "pushRepo": "origin"
   },
-  npm: { publish: false, skipChecks: true },
-  github: { release: false },
-  hooks: {
-    'after:bump': 'pnpm publish --no-git-checks'
+  "npm": {
+    "publish": false,
+    "skipChecks": true
   },
-  plugins: {
-    '@release-it/conventional-changelog': {
-      preset: {
-        name: 'conventionalcommits',
-        types: [
-          { type: 'feat', section: 'Features:' },
-          { type: 'fix', section: 'Fixes:' },
-        ],
-      },
-      infile: 'CHANGELOG.md',
-      ignoreRecommendedBump: false,
-      strictSemVer: true,
-      commitsPath: '.',
-      gitRawCommitsOpts: {
-        path: '.',
-        format: '%s%n%n%b%n%H',
-      },
-      writerOpts: {
-        commitPartial: commitTemplate,
-        headerPartial: function(context) { return `## [${context.version}](${context.host}/${context.owner}/${context.repository}/compare/${context.previousTag}...${context.packageName}@${context.version}) (${context.date})`; },
-        finalizeContext: function (context) {
-          context.packageName = packageName;
-          return context;
-        },
-        transform: function (commit) {
-          const out = Object.assign({}, commit);
-
-          if (out.type === 'chore' && out.scope && /release v\d+\.\d+\.\d+/.test(out.subject)) {
-            return null;
-          }
-
-          const typeTitle = typeMap[out.type];
-          if (typeTitle) out.type = typeTitle;
-
-          if (out.hash && typeof out.hash === 'string') out.hash = out.hash.substring(0, 7);
-          if ((!out.hash || out.hash.length === 0) && out.body && typeof out.body === 'string') {
-            const m = out.body.match(/([0-9a-f]{7,40})$/m);
-            if (m) {
-              out.hash = m[1].substring(0, 7);
-              out.body = out.body.replace(/(?:\r?\n)?[0-9a-f]{7,40}\s*$/m, '').trim();
-            }
-          }
-
-          if (out.body && typeof out.body === 'string') {
-            out.body = out.body.replace(/\r\n/g, '\n').split('\n').map(l => l.trim() ? ('> ' + l) : '').join('\n').trim();
-          }
-          return out;
-        },
-        groupBy: 'type',
-        commitGroupsSort: 'title',
-        commitsSort: ['scope', 'subject'],
-      },
-      skipOnEmpty: true,
-    },
+  "github": {
+    "release": false
   },
+  "hooks": {
+    "after:bump": "pnpm publish --no-git-checks --provenance"
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": {
+        "name": "conventionalcommits",
+        "types": [
+          { "type": "feat", "section": "Features" },
+          { "type": "fix", "section": "Bug Fixes" }
+        ]
+      },
+      "parserOpts": {
+        "headerPattern": /^(\w+)(?:\((.*)\))?!?: (.*)$/,
+        "headerCorrespondence": ["type", "scope", "subject"]
+      },
+      "infile": "CHANGELOG.md",
+      "ignoreRecommendedBump": false,
+      "strictSemVer": true,
+      "path": ".",
+      "gitRawCommitsOpts": {
+        "path": "."
+      },
+      "skipOnEmpty": true
+    }
+  }
 };
