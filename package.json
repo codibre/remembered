@@ -66,5 +66,5 @@
     "typescript": "^5.9.2",
     "@nestjs/cli": "^11.0.10"
   },
-  "packageManager": "pnpm@10.13.1"
+  "packageManager": "pnpm@11.1.3"
 }
