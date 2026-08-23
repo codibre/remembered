@@ -37,7 +37,7 @@
     "monorepo"
   ],
   "engines": {
-    "node": "24"
+    "node": "22"
   },
   "author": "Codibre",
   "license": "MIT",
