@@ -200,8 +200,7 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Install release-it for CI
-        run: pnpm install -g release-it @release-it/conventional-changelog
+      # Use local release-it from workspace dependencies (v18.1.2 API compatible)
 
       - name: Configure npm authentication
         run: |
@@ -247,7 +246,7 @@ jobs:
 
           # Use our release wrapper script - any error should fail the job
           echo "🚀 Running release wrapper..."
-          ./scripts/release-wrapper.sh "./libs/${{ matrix.library }}" "$package_name" --ci
+          pnpm exec ./scripts/release-wrapper.sh "./libs/${{ matrix.library }}" "$package_name" --ci
           echo "✅ Successfully released ${{ matrix.library }}"
 
           # Verify the tag was created and pushed
