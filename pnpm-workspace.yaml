@@ -1,2 +1,6 @@
 packages:
   - 'libs/**'
+
+allowBuilds:
+  protobufjs: true
+  unrs-resolver: true
