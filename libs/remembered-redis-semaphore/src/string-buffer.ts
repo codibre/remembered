@@ -1,3 +1,6 @@
+/**
+ * A simple string buffer class that allows for efficient string concatenation and conditional appending of parts.
+ */
 export class StringBuffer {
 	constructor(private parts: unknown[] = []) {}
 
