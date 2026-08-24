@@ -1,7 +1,7 @@
 {
   "name": "@remembered/decorator",
   "description": "Decorator for remembered cache with configurable TTL",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": {
     "name": "Thiago O Santos <tos.oliveira@gmail.com>"
   },
