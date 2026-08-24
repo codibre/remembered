@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.0](https://github.com/codibre/remembered/compare/%40remembered%2Fs3-alternative-persistence%401.4.0...%24%7Bnpm.name%7D%402.0.0) (2026-08-24)
+
+### Bug Fixes
+
+* fixing lint-staged ([69344b7](https://github.com/codibre/remembered/commit/69344b7a1c7dec3093c2f60e41adad0ae4db4ad5))
+
 ## [1.4.0](https://github.com/codibre/remembered/compare/v0.11.0...%24%7Bnpm.name%7D%401.4.0) (2026-08-24)
 
 ### Features
