@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.0](https://github.com/codibre/remembered/compare/remembered%400.13.0...%24%7Bnpm.name%7D%401.0.0) (2026-08-24)
+
+### ⚠ BREAKING CHANGES
+
+* first major bump
+
+### Features
+
+* first stable version ([06abe68](https://github.com/codibre/remembered/commit/06abe68a9901bf8605c03f3d343692192ffea6bd))
+
+### Bug Fixes
+
+* fixing lint-staged ([69344b7](https://github.com/codibre/remembered/commit/69344b7a1c7dec3093c2f60e41adad0ae4db4ad5))
+
 ## [0.13.0](https://github.com/codibre/remembered/compare/v0.11.0...%24%7Bnpm.name%7D%400.13.0) (2026-08-24)
 
 ### Features
