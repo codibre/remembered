@@ -36,9 +36,6 @@
     "nestjs",
     "monorepo"
   ],
-  "engines": {
-    "node": "22"
-  },
   "author": "Codibre",
   "license": "MIT",
   "devDependencies": {

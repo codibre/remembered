@@ -1,3 +1,4 @@
-module.exports = {
-  extends: ['../../.release-it.base.js'],
-};
+{
+  "*.js": ["prettier --write", "eslint --fix"],
+  "*.ts": ["prettier --write", "eslint --fix"]
+}

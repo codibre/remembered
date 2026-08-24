@@ -5,6 +5,7 @@ import { RememberedConfig } from './remembered-config';
 const Empty = Symbol('Empty');
 
 const defaultConfig = { ttl: 0 };
+
 /**
  * A class that help you remember previous calls for you functions, to avoid new calls while it is not forgotten
  */
