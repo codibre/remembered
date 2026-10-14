@@ -398,8 +398,7 @@ export class RememberedRedis extends Remembered {
 	): Promise<(() => PromiseLike<unknown>) | undefined> {
 		const { semaphore } = this.settings;
 		if (semaphore?.tryAcquire) {
-			const release = await this.tryTo(() => semaphore.tryAcquire!(lockKey));
-			return release ? () => release() : undefined;
+			return await this.tryTo(() => semaphore.tryAcquire!(lockKey));
 		}
 		// default behavior: internal redis-semaphore Mutex. The lock lease
 		// (refreshed while held) frees it if the holder dies
@@ -458,16 +457,19 @@ export class RememberedRedis extends Remembered {
 					) {
 						return;
 					}
-					// silent production: nobody consumes it; the pointer swap
-					// is the only visible effect
-					await this.produceStream(
+					// silent production: nobody consumes it; drain the
+					// generator, the pointer swap is the only visible
+					// effect
+					for await (const _item of this.generateStream(
 						key,
 						metaKey,
 						callback,
 						options,
 						{ pos: 0 },
 						true,
-					);
+					)) {
+						void _item;
+					}
 				} finally {
 					await this.tryTo(release);
 				}
@@ -623,32 +625,9 @@ export class RememberedRedis extends Remembered {
 	}
 
 	/**
-	 * Silent production used by the background refresh: same as
-	 * generateStream but without a consumer attached.
+	 * Reads the stream meta/pointer hash; anything unparseable counts as
+	 * no stream, so corruption degrades to regeneration, never to a crash
 	 */
-	private async produceStream<T>(
-		key: string,
-		metaKey: string,
-		callback: () => AsyncIterable<T>,
-		options: StreamOptions,
-		delivered: Delivered,
-		silent: boolean,
-	) {
-		const generator = this.generateStream<T>(
-			key,
-			metaKey,
-			callback,
-			options,
-			delivered,
-			silent,
-		);
-		// drain without yielding: the result value is not needed, only the
-		// publication side effect
-		for await (const _item of generator) {
-			void _item;
-		}
-	}
-
 	private async readStreamMeta(
 		metaKey: string,
 	): Promise<StreamMeta | undefined> {
