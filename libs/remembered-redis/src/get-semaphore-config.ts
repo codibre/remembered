@@ -24,8 +24,25 @@ export interface RememberedSemaphore {
 
 export type RequiredField<Type, Field extends keyof Type> = Omit<Type, Field> &
 	Required<Pick<Type, Field>>;
-export type RedisLike = Pick<Redis, 'getBuffer' | 'setex' | 'del'>;
-export type RedisMutexReadyLike = Pick<
+/**
+ * What a RememberedRedis client must provide: the commands the cache
+ * itself calls, plus eval/evalsha, which redis-semaphore needs to run its
+ * lock scripts through the very same client (when no custom semaphore is
+ * configured) — a client without them would compile and then fail at the
+ * first acquire.
+ */
+export type RedisLike = Pick<
 	Redis,
-	'getBuffer' | 'setex' | 'del' | 'eval' | 'evalsha'
+	| 'getBuffer'
+	| 'setex'
+	| 'del'
+	| 'eval'
+	| 'evalsha'
+	| 'hget'
+	| 'hexists'
+	| 'hgetBuffer'
+	| 'hset'
+	| 'hmget'
+	| 'expire'
+	| 'pttl'
 >;

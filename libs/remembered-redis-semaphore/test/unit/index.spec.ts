@@ -195,6 +195,54 @@ describe(RememberedRedisSemaphore.name, () => {
 		});
 	});
 
+	describe(proto.tryAcquire.name, () => {
+		let tryAcquire: jest.SpyInstance;
+		let releaseMock: jest.SpyInstance;
+
+		beforeEach(() => {
+			tryAcquire = mutex.tryAcquire = jest.fn().mockResolvedValue(true);
+			mutex.acquire = jest.fn();
+			releaseMock = mutex.release = jest.fn().mockResolvedValue(undefined);
+			settings.lockOptions = { info: 'my lock options ' } as any;
+		});
+
+		it('should use the same mutex namespace as acquire', async () => {
+			target['settings'].prefix = 'my prefix';
+			target['settings'].fixedPrefix = true;
+
+			const release = await target.tryAcquire('my key');
+
+			expect(Mutex).toHaveCallsLike([
+				redis,
+				'my prefix:REMEMBERED-SEMAPHORE:my key',
+				{ ...defaultLockOptions, onLockLost: expect.any(Function) },
+			]);
+			expect(tryAcquire).toHaveCallsLike([]);
+			expect(release).toEqual(expect.any(Function));
+
+			await release!();
+			await delay(1);
+			expect(releaseMock).toHaveCallsLike([]);
+		});
+
+		it('should return undefined without queueing when the lock is taken', async () => {
+			tryAcquire.mockResolvedValue(false);
+
+			expect(await target.tryAcquire('my key')).toBeUndefined();
+			expect(mutex.acquire).not.toHaveBeenCalled();
+			expect(releaseMock).not.toHaveBeenCalled();
+		});
+
+		it('should report tryAcquire errors and return undefined', async () => {
+			const error = new Error('my error');
+			tryAcquire.mockRejectedValue(error);
+			const onAcquireError = (target['settings'].onAcquireError = jest.fn());
+
+			expect(await target.tryAcquire('my key')).toBeUndefined();
+			expect(onAcquireError).toHaveCallsLike(['my key', error]);
+		});
+	});
+
 	describe(proto.run.name, () => {
 		let release: jest.SpyInstance;
 

@@ -32,7 +32,14 @@ coverage/
 # Temp files
 *.tsbuildinfo
 .check/
-.dump.rdb
+
+# Redis local artifacts (docker volume + dumps)
+redis_data/
+dump.rdb
+
+# Code intelligence artifacts
+.codegraph/
+graphify-out/
 
 # Husky internals
 .husky/.gitignore
