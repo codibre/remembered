@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0](https://github.com/codibre/remembered/compare/%40remembered%2Fredis-semaphore%401.0.0...%24%7Bnpm.name%7D%401.1.0) (2026-10-14)
+
+### Features
+
+* **@remembered/redis:** getSWRStream - stale-while-revalidate redis streamed cache ([988be04](https://github.com/codibre/remembered/commit/988be049f8fb0a80915ced00a0fb90581196eb99)), closes [#12](https://github.com/codibre/remembered/issues/12)
+
 ## [1.0.0](https://github.com/codibre/remembered/compare/%40remembered%2Fredis-semaphore%400.4.0...%24%7Bnpm.name%7D%401.0.0) (2026-08-24)
 
 ### ⚠ BREAKING CHANGES
