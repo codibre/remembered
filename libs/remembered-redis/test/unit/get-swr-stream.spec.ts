@@ -397,6 +397,7 @@ describe('getSWRStream', () => {
 			thrown = err;
 		}
 		expect(thrown).toBeInstanceOf(StreamIncompleteError);
+		expect((thrown as StreamIncompleteError).key).toBe(key);
 		expect((thrown as StreamIncompleteError).deliveredCount).toBe(5);
 		expect((thrown as Error).message).toContain('5 items were delivered');
 		// no positional re-traversal of the source was attempted

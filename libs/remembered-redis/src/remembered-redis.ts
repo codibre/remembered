@@ -94,8 +94,9 @@ class StreamLostError extends Error {
  * entirely. A corrupted result is worse than a broken one: the delivery
  * throws at the breaking point instead.
  *
- * The error carries how many items went out before the throw
- * (deliveredCount). Items may already have been processed downstream, so
+ * The error carries which stream was interrupted (key) and how many items
+ * went out before the throw (deliveredCount). Items may already have been
+ * processed downstream, so
  * this is the consumer's actionable trigger — revert operations, alert,
  * fail over, or discard deliveredCount and call getSWRStream again from
  * scratch, accepting repeats as eventual consistency.
@@ -107,6 +108,10 @@ class StreamLostError extends Error {
  */
 export class StreamIncompleteError extends Error {
 	/**
+	 * The remembering key of the stream whose delivery was interrupted
+	 */
+	readonly key: string;
+	/**
 	 * How many items were delivered before delivery was interrupted
 	 */
 	readonly deliveredCount: number;
@@ -115,6 +120,7 @@ export class StreamIncompleteError extends Error {
 			`Remembered stream ${key} could not be delivered in full: ${delivered} items were delivered, delivery stopped ${detail}`,
 		);
 		this.name = 'StreamIncompleteError';
+		this.key = key;
 		this.deliveredCount = delivered;
 	}
 }
@@ -282,18 +288,16 @@ export class RememberedRedis extends Remembered {
 	 * stream older than maxLifetime is treated as a miss and regenerated
 	 * before serving.
 	 *
-	 * A cached generation vanishing mid-read (maxmemory eviction, manual
-	 * DEL, failover data loss) is NOT silently healed: completing a
-	 * partially delivered stream would mean re-traversing the source and
-	 * positionally skipping the delivered prefix, and with no ordering
-	 * control over the source, additions or reorders before the breaking
-	 * point shift what "the same position" means — the consumer could get
-	 * already-processed items in a different context, or miss items.
-	 * A corrupted result is worse than a broken one: iteration throws
-	 * StreamIncompleteError, carrying deliveredCount, at the breaking
-	 * point. A cold pass cannot hit this (the source is the delivery
-	 * itself), and a dead pointer nobody has read from yet is regenerated
-	 * transparently.
+	 * Uncontrolled eviction has a defined outcome: if the cached generation
+	 * vanishes while a consumer is mid-delivery (maxmemory eviction, a
+	 * manual DEL, failover data loss), iteration throws
+	 * StreamIncompleteError at the breaking point, carrying key and
+	 * deliveredCount for fine-grained control. Nothing is ever silently
+	 * repeated or skipped to keep a delivery going. A generation already
+	 * gone or damaged when the read starts is a plain miss and
+	 * cold-regenerates transparently, and a cold pass cannot hit this at
+	 * all — the source is the delivery itself. See the error for the
+	 * consumer options.
 	 *
 	 * Trade-offs (eventual consistency):
 	 * - while a revalidation runs, the superseded generation coexists with
@@ -303,19 +307,17 @@ export class RememberedRedis extends Remembered {
 	 *   for one more full pass;
 	 * - each revalidation is a complete source traversal (no incremental
 	 *   regeneration): one full callback() pass per freshness window in
-	 *   steady state, more only with eviction-triggered resumptions;
+	 *   steady state.
+	 *
 	 * Cache write failures never throw: when Redis refuses generation
 	 * writes (memory limit, read-only replica) or is simply down, the
 	 * partial generation is evicted, nothing is published, and delivery
 	 * continues complete from the source — a live pass streams from the
 	 * source anyway while saving, so losing the cache costs reuse, never
-	 * correctness. The one instability that surfaces is a cached
-	 * generation vanishing mid-read, which throws StreamIncompleteError
-	 * with the delivered count — the actionable trigger to revert, alert
-	 * or fail over, since items may already have been processed.
-	 * Sustained write pressure is a
-	 * deployment concern (sizing, eviction policy, monitoring), not
-	 * something the cache layer can fix from the inside.
+	 * correctness. Sustained write pressure is a deployment concern
+	 * (sizing, eviction policy, monitoring), not something the cache layer
+	 * can fix from the inside.
+	 *
 	 * Cross-process coordination is soft by design: only one revalidation
 	 * runs at a time (try-once redis mutex lease, forgotten when taken),
 	 * and a superseded generation is reclaimed by any read that finds it
@@ -335,6 +337,9 @@ export class RememberedRedis extends Remembered {
 	 * idle superseded generation waits before being reclaimed, defaults
 	 * to 10min)
 	 * @returns the (now) remembered async iterable
+	 * @throws StreamIncompleteError only while iterating, never when the
+	 * iterable is obtained: the cached generation vanished mid-delivery.
+	 * Catch it for fine-grained control (key, deliveredCount)
 	 */
 	getSWRStream<T>(
 		key: string,

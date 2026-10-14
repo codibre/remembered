@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 import { Mutex } from 'redis-semaphore';
 import { promisify } from 'util';
 import { v4 } from 'uuid';
-import { EMPTY, RememberedRedis } from '../../src';
+import { EMPTY, RememberedRedis, StreamIncompleteError } from '../../src';
 import { AlternativePersistence } from '../../src/remembered-redis-config';
 import { gzipValueSerializer } from '../../src/gzip-value-serializer';
 
@@ -356,7 +356,15 @@ describe('e2e: functional', () => {
 				seen.push((await iterator.next()).value as number);
 			}
 			await redis.del(freshGen);
-			await expect(iterator.next()).rejects.toThrow(/20 items were delivered/);
+			let thrown: unknown;
+			try {
+				await iterator.next();
+			} catch (err) {
+				thrown = err;
+			}
+			expect(thrown).toBeInstanceOf(StreamIncompleteError);
+			expect((thrown as StreamIncompleteError).key).toBe(key);
+			expect((thrown as StreamIncompleteError).deliveredCount).toBe(20);
 			expect(seen).toEqual(items.slice(0, 20));
 		});
 
