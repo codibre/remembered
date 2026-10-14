@@ -18,7 +18,8 @@
     "experimentalDecorators": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "noEmit": true
   },
   "exclude": ["**/node_modules", "**/dist"]
 }

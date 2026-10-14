@@ -56,9 +56,8 @@ describe('getSWRStream', () => {
 	let key: string;
 	let metaKey: string;
 
-	const currentGen = async () => redis.hget(metaKey, 'gen');
+	const currentGen = async () => await redis.hget(metaKey, 'gen');
 	const currentMeta = async () => {
-		const gen = (await currentGen()) as string;
 		return JSON.parse((await redis.hget(metaKey, 'meta')) as string) as {
 			chunks: number;
 			chunkSize: number;
@@ -636,7 +635,9 @@ describe('getSWRStream', () => {
 			collect(target.getSWRStream(key, callbackA, { chunkSize: 3 })),
 			(async () => {
 				await delay(15);
-				return collect(targetB.getSWRStream(key, callbackB, { chunkSize: 3 }));
+				return await collect(
+					targetB.getSWRStream(key, callbackB, { chunkSize: 3 }),
+				);
 			})(),
 		]);
 
