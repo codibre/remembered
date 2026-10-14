@@ -24,7 +24,18 @@ export interface RememberedSemaphore {
 
 export type RequiredField<Type, Field extends keyof Type> = Omit<Type, Field> &
 	Required<Pick<Type, Field>>;
-export type RedisLike = Pick<Redis, 'getBuffer' | 'setex' | 'del'>;
+export type RedisLike = Pick<
+	Redis,
+	| 'getBuffer'
+	| 'setex'
+	| 'del'
+	| 'hget'
+	| 'hgetBuffer'
+	| 'hset'
+	| 'hmget'
+	| 'expire'
+	| 'pttl'
+>;
 export type RedisMutexReadyLike = Pick<
 	Redis,
 	'getBuffer' | 'setex' | 'del' | 'eval' | 'evalsha'

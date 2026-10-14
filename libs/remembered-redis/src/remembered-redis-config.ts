@@ -26,8 +26,52 @@ export interface AlternativePersistence {
 	maxResultsPerSave?: number;
 }
 
+export interface StreamOptions {
+	/**
+	 * Number of items stored per Redis hash field. Defaults to 500
+	 */
+	chunkSize?: number;
+	/**
+	 * Time to live, in seconds, for the whole stream. Defaults to the instance redisTtl
+	 */
+	ttl?: number;
+	/**
+	 * Whether each chunk should be compressed before being saved. Defaults to the instance compression setting
+	 */
+	compression?: boolean;
+	/**
+	 * Maximum lifetime, in seconds, since the stream generation started, for
+	 * which active readers and generators may keep renewing the stream ttl.
+	 * Prevents a stuck consumer from keeping an old stream alive forever.
+	 * Defaults to 24h
+	 */
+	maxLifetime?: number;
+	/**
+	 * How many times a stream lost mid-read (expired/evicted) may be silently
+	 * regenerated from the source and resumed, per consumer iterator.
+	 * Defaults to 3
+	 */
+	maxRecoveries?: number;
+	/**
+	 * Seconds a superseded (stale, replaced) generation must stay untouched
+	 * before readers reclaim it opportunistically, instead of waiting for the
+	 * ttl sweeper. Active readers keep renewing the generation, so a fresh
+	 * ttl means someone is still consuming it. Defaults to 10 minutes
+	 */
+	retireGrace?: number;
+}
+
 export interface Semaphore {
 	acquire(key: string): Promise<() => Promise<unknown>>;
+	/**
+	 * Optional try-once acquisition, used by the getSWRStream revalidation
+	 * soft mutex: resolves to a release callback when the lock was taken,
+	 * or to undefined when somebody already holds it — in which case the
+	 * refresh is simply forgotten (never queued), and a later stale read
+	 * tries again. When not implemented, an internal redis-semaphore Mutex
+	 * is used as the default behavior.
+	 */
+	tryAcquire?(key: string): Promise<(() => Promise<unknown>) | undefined>;
 }
 
 export interface RememberedRedisConfig extends RememberedConfig {

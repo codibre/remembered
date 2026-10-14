@@ -1,14 +1,19 @@
 import { RedisLike } from './get-semaphore-config';
 import { getSafeInstance } from 'get-safe-instance';
 
-type UsedRedisMethods = 'getBuffer' | 'setex' | 'del' | 'eval' | 'evalsha';
-const usedRedisMethods: UsedRedisMethods[] = [
+const usedRedisMethods = [
 	'getBuffer',
 	'setex',
 	'del',
 	'eval',
 	'evalsha',
-];
+	'hget',
+	'hgetBuffer',
+	'hset',
+	'hmget',
+	'expire',
+	'pttl',
+] as const;
 
 export function getSafeRedis(
 	source: RedisLike,

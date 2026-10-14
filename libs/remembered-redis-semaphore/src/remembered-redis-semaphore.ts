@@ -21,19 +21,13 @@ export class RememberedRedisSemaphore implements Semaphore {
 	}
 
 	/**
-	 * Acquires the requested key and returns the release function
-	 * @param key The key to be acquired
-	 * @param ignoreAcquiringError true if acquiring errors can be ignored. Default true.
-	 * @returns The release function
+	 * Builds the mutex for a key, so acquire and tryAcquire share the exact
+	 * same lock namespace and are mutually exclusive
 	 */
-	async acquire(
-		key: string,
-		ignoreAcquiringError = true,
-	): Promise<() => Promise<unknown>> {
-		const { redis } = this;
+	private buildMutex(key: string): Mutex {
 		const { prefix } = this.settings;
-		const mutex = new Mutex(
-			redis,
+		return new Mutex(
+			this.redis,
 			new StringBuffer()
 				.$If(prefix, [prefix, ':'])
 				.$If(this.settings.fixedPrefix, ['REMEMBERED-SEMAPHORE:'])
@@ -44,6 +38,19 @@ export class RememberedRedisSemaphore implements Semaphore {
 				onLockLost: (err) => this.settings.onLockLost?.(key, err),
 			},
 		);
+	}
+
+	/**
+	 * Acquires the requested key and returns the release function
+	 * @param key The key to be acquired
+	 * @param ignoreAcquiringError true if acquiring errors can be ignored. Default true.
+	 * @returns The release function
+	 */
+	async acquire(
+		key: string,
+		ignoreAcquiringError = true,
+	): Promise<() => Promise<unknown>> {
+		const mutex = this.buildMutex(key);
 		const acquire = mutex.acquire.bind(mutex);
 		const release = mutex.release.bind(mutex);
 
@@ -56,6 +63,29 @@ export class RememberedRedisSemaphore implements Semaphore {
 			this.settings.onAcquireError?.(key, err as Error);
 		}
 
+		return async () => dontWait(release);
+	}
+
+	/**
+	 * Tries to acquire the requested key once, without queueing: returns
+	 * the release function when the lock was taken; undefined when someone
+	 * already holds it, or when the lock could not be checked (the error
+	 * is reported through onAcquireError) — in both cases the caller is
+	 * expected to forget the work, not to retry it
+	 * @param key The key to be acquired
+	 * @returns The release function, if the lock was taken
+	 */
+	async tryAcquire(key: string): Promise<(() => Promise<unknown>) | undefined> {
+		const mutex = this.buildMutex(key);
+		try {
+			if (!(await mutex.tryAcquire())) {
+				return undefined;
+			}
+		} catch (err) {
+			this.settings.onAcquireError?.(key, err as Error);
+			return undefined;
+		}
+		const release = mutex.release.bind(mutex);
 		return async () => dontWait(release);
 	}
 
