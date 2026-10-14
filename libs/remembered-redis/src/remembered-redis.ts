@@ -31,11 +31,17 @@ export const DEFAULT_REFRESH_INTERVAL = 8000;
 export const DEFAULT_STREAM_CHUNK_SIZE = 500;
 export const DEFAULT_STREAM_MAX_LIFETIME = 86400; // 24h
 const MS_PER_SECOND = 1000;
-export const DEFAULT_STREAM_MAX_RECOVERIES = 3;
 /** Grace after which a superseded generation, idle for that long, is
  * reclaimed by the next reader instead of waiting for the ttl sweeper */
 export const DEFAULT_STREAM_RETIRE_GRACE = 600;
-const MAX_STREAM_GENERATION_ATTEMPTS = 5;
+/**
+ * A read only re-enters the generation loop after a cold miss, a dead
+ * pointer that delivered nothing, or waiting out another local consumer —
+ * each re-entry makes real progress, and any instability that delivered
+ * items to a consumer throws instead of looping. This cap is the
+ * belt-and-braces bound on pathological churn.
+ */
+const MAX_STREAM_GENERATION_ATTEMPTS = 2;
 export const EMPTY = Symbol('Empty');
 const STREAM_META_FIELD = 'meta';
 const STREAM_REVALIDATE_SUFFIX = ':revalidate';
@@ -65,14 +71,51 @@ const STREAM_CLEAR_TOMBSTONE_TTL = 3600; // 1h
 const STREAM_META_SUFFIX = ':stream-meta';
 
 /**
- * Internal signal that a stream generation became unreadable (expired or
- * evicted) mid-read. Never reaches consumers: getSWRStream regenerates
- * from the source and resumes delivery from the exact position instead.
+ * Internal signal that a cached generation became unreadable (evicted,
+ * manually deleted, lost in failover) mid-read. iterateStream handles it:
+ * a cold regeneration when nothing was delivered yet, a
+ * StreamIncompleteError otherwise.
  */
 class StreamLostError extends Error {
-	constructor(genKey: string) {
+	constructor(readonly genKey: string) {
 		super(`Remembered stream generation ${genKey} is gone`);
 		this.name = 'StreamLostError';
+	}
+}
+
+/**
+ * Raised when a cached stream vanished mid-read and the library refuses
+ * to complete it from another source of truth. Completing a partially
+ * delivered stream means re-traversing the source and skipping the
+ * delivered prefix positionally — but there is no ordering control over
+ * the source: items added, removed or reordered before the breaking point
+ * shift what "the same position" means, so the consumer could receive
+ * items it has already processed, in a different context, or miss items
+ * entirely. A corrupted result is worse than a broken one: the delivery
+ * throws at the breaking point instead.
+ *
+ * The error carries how many items went out before the throw
+ * (deliveredCount). Items may already have been processed downstream, so
+ * this is the consumer's actionable trigger — revert operations, alert,
+ * fail over, or discard deliveredCount and call getSWRStream again from
+ * scratch, accepting repeats as eventual consistency.
+ *
+ * Only a vanishing cached generation gets here (maxmemory eviction,
+ * manual DEL, failover data loss). A cold pass cannot surface it (the
+ * source is the delivery itself), and cache write failures never throw —
+ * they abandon caching while delivery continues complete from the source.
+ */
+export class StreamIncompleteError extends Error {
+	/**
+	 * How many items were delivered before delivery was interrupted
+	 */
+	readonly deliveredCount: number;
+	constructor(key: string, delivered: number, detail: string) {
+		super(
+			`Remembered stream ${key} could not be delivered in full: ${delivered} items were delivered, delivery stopped ${detail}`,
+		);
+		this.name = 'StreamIncompleteError';
+		this.deliveredCount = delivered;
 	}
 }
 
@@ -95,8 +138,8 @@ interface StreamMeta extends StreamMetaFields {
 }
 
 /**
- * Per consumer iterator, how many items have effectively gone out, so a
- * mid-read stream loss can be recovered by resuming at this exact position.
+ * Per consumer iterator, how many items have effectively gone out, so an
+ * interrupted delivery can report exactly what the consumer already got.
  */
 interface Delivered {
 	pos: number;
@@ -239,26 +282,40 @@ export class RememberedRedis extends Remembered {
 	 * stream older than maxLifetime is treated as a miss and regenerated
 	 * before serving.
 	 *
-	 * Cache instability is absorbed: if the current generation expires or is
-	 * evicted mid-read, getSWRStream regenerates from the source and
-	 * resumes delivery from the exact position the consumer stopped at —
-	 * delivery stays complete and ordered, and no item is ever re-delivered
-	 * to the same iterator.
+	 * A cached generation vanishing mid-read (maxmemory eviction, manual
+	 * DEL, failover data loss) is NOT silently healed: completing a
+	 * partially delivered stream would mean re-traversing the source and
+	 * positionally skipping the delivered prefix, and with no ordering
+	 * control over the source, additions or reorders before the breaking
+	 * point shift what "the same position" means — the consumer could get
+	 * already-processed items in a different context, or miss items.
+	 * A corrupted result is worse than a broken one: iteration throws
+	 * StreamIncompleteError, carrying deliveredCount, at the breaking
+	 * point. A cold pass cannot hit this (the source is the delivery
+	 * itself), and a dead pointer nobody has read from yet is regenerated
+	 * transparently.
 	 *
 	 * Trade-offs (eventual consistency):
 	 * - while a revalidation runs, the superseded generation coexists with
-	 *   the new one: peak storage is ~2x the stream, bounded at 2x by the
-	 *   single-revalidation soft lock;
+	 *   the new generation: peak storage is ~2x the stream, bounded at 2x by
+	 *   the soft lock;
 	 * - a background refresh means a read may serve the previous snapshot
 	 *   for one more full pass;
 	 * - each revalidation is a complete source traversal (no incremental
 	 *   regeneration): one full callback() pass per freshness window in
 	 *   steady state, more only with eviction-triggered resumptions;
-	 * - resume after loss is positional, so a source that added, removed or
-	 *   reordered items around the breaking point can deliver items added
-	 *   before it, or repeat/skip moved items around it;
-	 * - recovery is capped by maxRecoveries, so a permanently lost stream
-	 *   with a permanently failing source surfaces as that source's error.
+	 * Cache write failures never throw: when Redis refuses generation
+	 * writes (memory limit, read-only replica) or is simply down, the
+	 * partial generation is evicted, nothing is published, and delivery
+	 * continues complete from the source — a live pass streams from the
+	 * source anyway while saving, so losing the cache costs reuse, never
+	 * correctness. The one instability that surfaces is a cached
+	 * generation vanishing mid-read, which throws StreamIncompleteError
+	 * with the delivered count — the actionable trigger to revert, alert
+	 * or fail over, since items may already have been processed.
+	 * Sustained write pressure is a
+	 * deployment concern (sizing, eviction policy, monitoring), not
+	 * something the cache layer can fix from the inside.
 	 * Cross-process coordination is soft by design: only one revalidation
 	 * runs at a time (try-once redis mutex lease, forgotten when taken),
 	 * and a superseded generation is reclaimed by any read that finds it
@@ -274,9 +331,9 @@ export class RememberedRedis extends Remembered {
 	 * @param options the stream options: chunkSize (defaults to 500), ttl
 	 * (freshness window in seconds, defaults to the instance redisTtl),
 	 * compression (defaults to the instance setting), maxLifetime (serving
-	 * horizon in seconds, defaults to 24h), maxRecoveries (defaults to 3)
-	 * and retireGrace (seconds an idle superseded generation waits before
-	 * being reclaimed, defaults to 10min)
+	 * horizon in seconds, defaults to 24h) and retireGrace (seconds an
+	 * idle superseded generation waits before being reclaimed, defaults
+	 * to 10min)
 	 * @returns the (now) remembered async iterable
 	 */
 	getSWRStream<T>(
@@ -297,10 +354,7 @@ export class RememberedRedis extends Remembered {
 	): AsyncGenerator<T> {
 		const metaKey = this.getRedisKey(`${key}${STREAM_META_SUFFIX}`);
 		const delivered = { pos: 0 };
-		const maxRecoveries =
-			options.maxRecoveries ?? DEFAULT_STREAM_MAX_RECOVERIES;
-		const maxIterations = MAX_STREAM_GENERATION_ATTEMPTS + maxRecoveries + 2;
-		let recoveries = 0;
+		const maxIterations = MAX_STREAM_GENERATION_ATTEMPTS + 1;
 
 		for (let iteration = 0; iteration < maxIterations; iteration++) {
 			const meta = await this.readStreamMeta(metaKey);
@@ -322,16 +376,20 @@ export class RememberedRedis extends Remembered {
 						if (!(err instanceof StreamLostError)) {
 							throw err;
 						}
-						if (recoveries++ >= maxRecoveries) {
-							throw new Error(
-								`Remembered stream ${key} was lost ${recoveries} times while being read`,
+						if (delivered.pos > 0) {
+							// the read broke mid-delivery: completing it
+							// would mean trusting a positional re-traversal
+							// of the source, which has no ordering guarantees
+							// around the breaking point — throw instead
+							throw new StreamIncompleteError(
+								key,
+								delivered.pos,
+								`when the cached generation ${err.genKey} vanished`,
 							);
 						}
-						if (delivered.pos === 0) {
-							// dead pointer, nothing delivered: clean it so a
-							// failed regeneration does not leave readers on it
-							await this.try(metaKey, () => this.redis.del(metaKey));
-						}
+						// dead pointer, nothing delivered: clean it so a cold
+						// regeneration starts fresh below
+						await this.try(metaKey, () => this.redis.del(metaKey));
 					}
 				}
 			}
@@ -354,7 +412,6 @@ export class RememberedRedis extends Remembered {
 					metaKey,
 					callback,
 					options,
-					delivered,
 					false,
 				);
 				if (streamedAll) {
@@ -370,8 +427,10 @@ export class RememberedRedis extends Remembered {
 			// a generation was published: loop back and continue from the
 			// delivered position
 		}
-		throw new Error(
-			`Could not remember stream for key ${key} after ${maxIterations} attempts`,
+		throw new StreamIncompleteError(
+			key,
+			delivered.pos,
+			`after ${maxIterations} generation attempts`,
 		);
 	}
 
@@ -465,7 +524,6 @@ export class RememberedRedis extends Remembered {
 						metaKey,
 						callback,
 						options,
-						{ pos: 0 },
 						true,
 					)) {
 						void _item;
@@ -482,20 +540,18 @@ export class RememberedRedis extends Remembered {
 	/**
 	 * Generates a fresh generation hash and atomically publishes it in the
 	 * meta hash (pointer + metadata in a single HSET). Modes:
-	 * - live first pass (nothing delivered): items stream to the consumer
-	 *   while being stored (returns true when fully delivered live);
-	 * - recovery (delivered > 0): the full sequence is stored; the already
-	 *   delivered prefix is skipped by the read path, so the same iterator
-	 *   resumes without gaps or repetitions (returns false);
+	 * - live pass: items stream to the consumer while being stored
+	 *   (returns true: delivery came complete from the source);
 	 * - silent (background refresh): nothing is yielded, the pointer swap
 	 *   publishes it (returns false).
+	 * Callers only reach this with nothing delivered yet: a read that lost
+	 * its generation mid-delivery throws instead of regenerating.
 	 */
 	private async *generateStream<T>(
 		key: string,
 		metaKey: string,
 		callback: () => AsyncIterable<T>,
 		options: StreamOptions,
-		delivered: Delivered,
 		silent: boolean,
 	): AsyncGenerator<T, boolean> {
 		const release = await this.acquire(key);
@@ -505,12 +561,7 @@ export class RememberedRedis extends Remembered {
 		let completed = false;
 		try {
 			const cached = await this.readStreamMeta(metaKey);
-			if (
-				cached &&
-				!silent &&
-				delivered.pos === 0 &&
-				!this.isStreamExpired(cached)
-			) {
+			if (cached && !silent && !this.isStreamExpired(cached)) {
 				// another generator won the race and this consumer has nothing
 				// delivered yet: let the caller serve the cached stream
 				return false;
@@ -524,44 +575,60 @@ export class RememberedRedis extends Remembered {
 			const serializer = compression ? gzipValueSerializer : valueSerializer;
 			const ttl = this.streamTtl(options);
 			const maxLifetime = options.maxLifetime ?? DEFAULT_STREAM_MAX_LIFETIME;
-			const streaming = !silent && delivered.pos === 0;
-
 			let chunkIndex = 0;
 			let buffer: T[] = [];
+			let publishable = true;
 			for await (const item of callback()) {
-				if (streaming) {
-					delivered.pos++;
+				if (!silent) {
 					yield item;
 				}
-				buffer.push(item);
-				if (buffer.length >= chunkSize) {
-					await this.saveStreamChunk(
-						genKey,
-						chunkIndex++,
-						buffer,
-						serializer,
-						maxLifetime,
-					);
-					buffer = [];
+				if (publishable) {
+					buffer.push(item);
+					if (buffer.length >= chunkSize) {
+						// an attempted write may have created the
+						// generation hash: the finally block evicts it
+						// unless the generation publishes complete
+						created = true;
+						publishable = await this.saveStreamChunk(
+							genKey,
+							chunkIndex,
+							buffer,
+							serializer,
+							maxLifetime,
+						);
+						chunkIndex++;
+						buffer = [];
+					}
 				}
 			}
-			if (buffer.length) {
-				await this.saveStreamChunk(
+			if (buffer.length && publishable) {
+				created = true;
+				publishable = await this.saveStreamChunk(
 					genKey,
-					chunkIndex++,
+					chunkIndex,
 					buffer,
 					serializer,
 					maxLifetime,
 				);
+				chunkIndex++;
 			}
-			created = true;
+
+			if (!publishable) {
+				// caching died for this pass: a partial generation is
+				// never published, and whatever was written is evicted by
+				// the finally block. A live pass was delivered from the
+				// source itself anyway, and a silent refresh has no
+				// consumer: losing the cache costs reuse, never
+				// correctness, so nobody throws over it
+				return !silent;
+			}
 
 			if (await this.wasStreamCleared(metaKey, startedAt)) {
 				// the stream was cleared while this generation was being
 				// produced: publishing would resurrect cleared data, so drop
 				// the chunks (the finally block deletes them) and let the
 				// consumer regenerate from a post-clear position
-				return streaming;
+				return !silent;
 			}
 			// publish: pointer + metadata in a single atomic HSET, then the
 			// horizon sweeper ttl. A crash before the HSET leaves an
@@ -591,7 +658,7 @@ export class RememberedRedis extends Remembered {
 			);
 			await this.try(metaKey, () => this.redis.expire(metaKey, maxLifetime));
 			completed = true;
-			return streaming;
+			return !silent;
 		} finally {
 			if (created && !completed) {
 				await this.try(genKey, () => this.redis.del(genKey));
@@ -665,30 +732,38 @@ export class RememberedRedis extends Remembered {
 	}
 
 	/**
-	 * Reads generation chunks starting at delivered.pos, renewing the
-	 * generation horizon ttl before each fetch, and updates delivered before
-	 * yielding, so a loss is always recoverable from the last delivered
-	 * position.
+	 * Reads generation chunk by chunk, renewing the generation horizon ttl
+	 * before each fetch and counting delivered items, so a delivery
+	 * interrupted by a vanishing generation reports exactly what went out.
+	 * Publication is atomic (all chunks exist before the pointer swap), so
+	 * a single HEXISTS on the last chunk proves the generation is intact
+	 * before serving: one already damaged or deleted is treated as a miss
+	 * and cold-regenerated without delivering a poisoned prefix.
 	 */
 	private async *readStreamChunks<T>(
 		meta: StreamMeta,
 		delivered: Delivered,
 	): AsyncGenerator<T> {
 		const serializer = meta.compression ? gzipValueSerializer : valueSerializer;
-		// chunks before this one are full by construction: the resume chunk
-		// can be computed without reading them
-		const startChunk = Math.floor(delivered.pos / meta.chunkSize);
-		for (let i = startChunk; i < meta.chunks; i++) {
+		if (meta.chunks > 0) {
+			const intact = await this.redis.hexists(
+				meta.genKey,
+				`${meta.chunks - 1}`,
+			);
+			if (!intact) {
+				throw new StreamLostError(meta.genKey);
+			}
+		}
+		for (let i = 0; i < meta.chunks; i++) {
 			await this.renewStream(meta.genKey, meta.maxLifetime);
 			const chunk = await this.redis.hgetBuffer(meta.genKey, `${i}`);
 			if (!chunk) {
 				throw new StreamLostError(meta.genKey);
 			}
 			const items = (await serializer.deserialize(chunk)) as T[];
-			const from = Math.max(0, delivered.pos - i * meta.chunkSize);
-			for (let j = from; j < items.length; j++) {
+			for (const item of items) {
 				delivered.pos++;
-				yield items[j];
+				yield item;
 			}
 		}
 	}
@@ -700,9 +775,10 @@ export class RememberedRedis extends Remembered {
 	 * renewed by every touch (generator and reader alike), so a generation
 	 * idle for longer than the retire grace has no consumer left on it.
 	 * Check-then-delete races are accepted by design: the window is
-	 * milliseconds, and its only possible victim is a reader still chunking
-	 * prev, which lands on the transparent resume path. A missed
-	 * reclamation is harmless: the ttl sweeper gets it anyway.
+	 * milliseconds, and its only possible victim is a consumer paused past
+	 * the whole grace mid-read of prev, which surfaces the loss as
+	 * StreamIncompleteError. A missed reclamation is harmless: the ttl
+	 * sweeper gets it anyway.
 	 */
 	private tryReclaimSuperseded(meta: StreamMeta, options: StreamOptions) {
 		const prev = meta.prev;
@@ -742,14 +818,27 @@ export class RememberedRedis extends Remembered {
 		chunk: unknown[],
 		serializer: typeof valueSerializer,
 		maxLifetime: number,
-	) {
+	): Promise<boolean> {
 		const value = (await serializer.serialize(chunk)) as string | Buffer;
-		await this.try(genKey, () =>
-			this.redis.hset(genKey, `${chunkIndex}`, value),
-		);
+		let written: number | undefined;
+		try {
+			written = (await this.redis.hset(genKey, `${chunkIndex}`, value)) as
+				number | undefined;
+		} catch (err) {
+			// a failed write only abandons caching for this pass: the
+			// partial generation is never published and gets evicted,
+			// delivery continues complete from the source
+			this.onError?.(genKey, err as Error);
+			return false;
+		}
+		if (written === undefined) {
+			// the safe redis breaker swallowed a failure into undefined
+			return false;
+		}
 		// the horizon ttl rides on every write: a crashed generation is
 		// swept, and a live one is kept within its serving horizon
 		await this.renewStream(genKey, maxLifetime);
+		return true;
 	}
 
 	private streamTtl(options: StreamOptions) {

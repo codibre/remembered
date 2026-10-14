@@ -61,7 +61,6 @@ for await (const item of remembered.getSWRStream(myKey, () => myLargeDataSource(
   ttl: 600, // freshness window in seconds (defaults to the instance redisTtl)
   compression: true, // compresses each chunk (defaults to the instance setting)
   maxLifetime: 86400, // serving horizon in seconds (defaults to 24h)
-  maxRecoveries: 3, // transparent regenerations per read (defaults to 3)
   retireGrace: 600, // seconds an idle superseded generation waits before reclamation (defaults to 10min)
 })) {
   // items arrive one at a time; only the current chunk is kept in memory
@@ -70,11 +69,11 @@ for await (const item of remembered.getSWRStream(myKey, () => myLargeDataSource(
 
 The first call generates and caches the stream, yielding items as they are produced. Subsequent calls skip the source and deliver cached chunks in generation order, fetching **one chunk at a time, on demand** — cached reads are memory-friendly too.
 
-## Stale-while-refresh, and surviving cache instability
+## Stale-while-refresh, and what happens when the cache breaks
 
 Cached streams **never hard-expire while consumable**: `ttl` is a *freshness marker* in the stream metadata, not a Redis execution ttl. When a stream goes stale, readers still get the **complete previous snapshot** while a single background task per stream regenerates it and atomically swaps the pointer — readers on the old generation finish undisturbed. `maxLifetime` is the serving horizon (a stream older than that is treated as a miss), and Redis ttls are only crash/orphan sweepers.
 
-If the stream is evicted mid-read (`maxmemory`, for instance), the library **regenerates from the source and resumes at the exact position the consumer stopped**: the iterator keeps receiving items, complete and in order, with no repeats.
+If the cached generation **vanishes while a consumer is mid-delivery** (`maxmemory` eviction, a manual `DEL`, failover data loss), iteration throws `StreamIncompleteError` carrying `deliveredCount` — it does **not** silently re-traverse the source to complete the delivery: resuming positionally cannot be trusted when additions or reorders may have happened before the breaking point, and a corrupted result is worse than a broken one. A generation that vanished or got damaged **before** anybody read from it is a plain miss: the next read cold-regenerates and delivers complete data. A cold pass itself can never hit this — the source is the delivery.
 
 `clearCache()` clears streams too, and a refresh that was mid-flight when you cleared will **not** resurrect the stream afterwards: its publish is checked against a short-lived clear tombstone and dropped. The next read is a fresh miss. (SWR here is the stale-while-revalidate semantics of [RFC 5861](https://www.rfc-editor.org/rfc/rfc5861), applied to remembered streams.)
 
@@ -89,9 +88,12 @@ Trade-offs, accepted by design (eventual consistency):
 
 - while a revalidation runs, old and new generation coexist: peak storage is ~2x the stream (bounded at 2x by the soft lock — concurrent readers never multiply generations). An idle superseded generation is reclaimed around `retireGrace` after the next read, worst case its sweeper horizon;
 - a background refresh means a read may serve the previous snapshot for one more full pass;
-- each revalidation is a complete source traversal (there is no incremental regeneration): expect one full `callback()` pass per freshness window in steady state, worst case more with eviction-triggered resumptions, capped by maxRecoveries;
-- resume after loss is positional: if the source added, removed or reordered items around the breaking point, items added before it may be delivered, and moved items may repeat or be skipped;
-- maxRecoveries and maxLifetime cap both loops, so a permanently failing source surfaces as its own error instead of an endless cycle.
+- each revalidation is a complete source traversal (there is no incremental regeneration): expect one full `callback()` pass per freshness window in steady state;
+- `maxLifetime` bounds the serving horizon, so a permanently failing source surfaces as its own error instead of an endless regeneration cycle.
+
+**Cache write failures never throw — and never publish a partial generation.** If Redis refuses the generation writes (`OOM command not allowed when used memory > 'maxmemory'` with `noeviction`, read-only replica) or is simply unreachable, whatever was written is evicted, nothing is published, and delivery continues **complete from the source** — a live pass streams from the source while saving anyway, so losing the cache costs reuse, never correctness. Retrying a refused write would only request more of the very memory Redis just refused, which is why the pass gives up caching instead of fighting it; sustained pressure remains a deployment concern (sizing, `maxmemory-policy`, monitoring).
+
+The one instability the consumer can see is an **incomplete read**: a cached generation vanishing mid-delivery throws `StreamIncompleteError` with the delivered count — the actionable trigger to revert operations, alert, or fail over, since items may already have been processed. The window is tiny (a cache hit, a read in progress, and an unrelated memory-eviction event — the read itself never exhausts memory): most consumers will never catch it in code; they just need their Redis healthy, sized, and monitored.
 
 
 # How to use alternative persistence

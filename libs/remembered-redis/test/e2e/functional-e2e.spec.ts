@@ -327,7 +327,7 @@ describe('e2e: functional', () => {
 			expect(callback).toHaveBeenCalledTimes(2);
 		});
 
-		it('should resume transparently when the stream is evicted mid-read', async () => {
+		it('should throw StreamIncompleteError when the cached generation vanishes mid-read', async () => {
 			const items = Array.from({ length: 100 }, (_, i) => i);
 			const callback = jest.fn(() => generate(items));
 			await collect(target.getSWRStream(key, callback, { chunkSize: 10 }));
@@ -336,12 +336,28 @@ describe('e2e: functional', () => {
 			const gen = (await redis.hget(metaKeyOf(key), 'gen')) as string;
 			await redis.hdel(gen, '2', '3', '4', '5', '6', '7', '8', '9');
 
+			// an already damaged generation is a plain miss: the fresh read
+			// cold-regenerates, delivering complete data from the source
 			const second = newTarget();
 			expect(
 				await collect(second.getSWRStream(key, callback, { chunkSize: 10 })),
 			).toEqual(items);
-			// the loss forced exactly one extra full traversal
 			expect(callback).toHaveBeenCalledTimes(2);
+
+			// but a generation vanishing while a consumer is mid-delivery
+			// throws at the breaking point, reporting what went out
+			const freshGen = (await redis.hget(metaKeyOf(key), 'gen')) as string;
+			const iterator = second
+				.getSWRStream<number>(key, () => generate(items), { chunkSize: 10 })
+				[Symbol.asyncIterator]();
+			const seen: number[] = [];
+			// two full chunks: the third fetch is the breaking point
+			for (let i = 0; i < 20; i++) {
+				seen.push((await iterator.next()).value as number);
+			}
+			await redis.del(freshGen);
+			await expect(iterator.next()).rejects.toThrow(/20 items were delivered/);
+			expect(seen).toEqual(items.slice(0, 20));
 		});
 
 		it('should not let clearCache be undone by a mid-flight refresh', async () => {

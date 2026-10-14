@@ -1,6 +1,6 @@
 import Redis, { Redis as RedisType } from 'ioredis';
 import { Mutex } from 'redis-semaphore';
-import { RememberedRedis } from '../../src';
+import { RememberedRedis, StreamIncompleteError } from '../../src';
 import { promisify } from 'util';
 import { v4 } from 'uuid';
 import { gzipValueSerializer } from '../../src/gzip-value-serializer';
@@ -365,27 +365,16 @@ describe('getSWRStream', () => {
 		expect(callback).toHaveBeenCalledTimes(2);
 	});
 
-	it('should regenerate and resume seamlessly when the stream is evicted mid-read', async () => {
+	it('should throw StreamIncompleteError when the cached generation vanishes mid-read', async () => {
 		const items = Array.from({ length: 10 }, (_, i) => i);
 		await collect(
 			target.getSWRStream(key, () => generate(items), { chunkSize: 5 }),
 		);
 		const genKey = (await currentGen()) as string;
 
-		const sourceCalls: number[][] = [];
-		const recoveringSource = async function* () {
-			const produced: number[] = [];
-			for (const item of items) {
-				produced.push(item);
-				yield item;
-			}
-			sourceCalls.push(produced);
-		};
-
+		const source = jest.fn(() => generate(items));
 		const iterator = target
-			.getSWRStream<number>(key, () => recoveringSource(), {
-				chunkSize: 5,
-			})
+			.getSWRStream<number>(key, source, { chunkSize: 5 })
 			[Symbol.asyncIterator]();
 
 		// consume the first chunk entirely
@@ -395,21 +384,23 @@ describe('getSWRStream', () => {
 		}
 		expect(seen).toEqual([0, 1, 2, 3, 4]);
 
-		// the stream gets evicted between chunk fetches
+		// the generation gets evicted between chunk fetches
 		await redis.del(genKey);
 
-		// the consumer must not notice: remaining items arrive, no repeats
-		for (;;) {
-			const { value, done } = await iterator.next();
-			if (done) {
-				break;
-			}
-			seen.push(value as number);
+		// completing the delivery would mean trusting a positional
+		// re-traversal of the source, so the read throws at the breaking
+		// point instead, reporting exactly what went out
+		let thrown: unknown;
+		try {
+			await iterator.next();
+		} catch (err) {
+			thrown = err;
 		}
-
-		expect(seen).toEqual(items);
-		const newGenKey = (await currentGen()) as string;
-		expect(newGenKey).not.toBe(genKey);
+		expect(thrown).toBeInstanceOf(StreamIncompleteError);
+		expect((thrown as StreamIncompleteError).deliveredCount).toBe(5);
+		expect((thrown as Error).message).toContain('5 items were delivered');
+		// no positional re-traversal of the source was attempted
+		expect(source).not.toHaveBeenCalled();
 	});
 
 	it('should not delete the cached stream when a consumer gets the iterable and never iterates it', async () => {
@@ -650,6 +641,150 @@ describe('getSWRStream', () => {
 			await collect(targetB.getSWRStream(key, callbackC, { chunkSize: 3 })),
 		).toEqual(items);
 		expect(callbackC).not.toHaveBeenCalled();
+	});
+
+	it('should deliver complete uncached when redis refuses chunk writes mid-delivery', async () => {
+		const items = Array.from({ length: 6 }, (_, i) => i);
+
+		// refusal starts at the first chunk write: two items were already
+		// delivered live from the source; delivery must NOT throw, it
+		// simply continues from the source with caching abandoned
+		const spy = jest.spyOn(redis, 'hset').mockImplementation((async (
+			keyArg: string,
+		) => {
+			if (keyArg.startsWith(metaKey)) {
+				throw new Error(
+					"OOM command not allowed when used memory > 'maxmemory'.",
+				);
+			}
+			return 1;
+		}) as never);
+		try {
+			expect(
+				await collect(
+					target.getSWRStream(key, () => generate(items), {
+						chunkSize: 2,
+					}),
+				),
+			).toEqual(items);
+		} finally {
+			spy.mockRestore();
+		}
+
+		// the partial generation was evicted; nothing was published
+		expect(await redis.exists(metaKey)).toBe(0);
+		const [, keys] = await redis.scan(
+			0,
+			'MATCH',
+			`REMEMBERED:${key}:stream-meta:*`,
+			'COUNT',
+			100,
+		);
+		expect(keys).toEqual([]);
+	});
+
+	it('should deliver complete uncached when the safe-redis breaker swallows write failures', async () => {
+		// with redisTimeout set, hset failures come back as undefined:
+		// the pass degrades to uncached delivery without throwing
+		const spy = jest
+			.spyOn(redis, 'hset')
+			.mockRejectedValue(
+				new Error("OOM command not allowed when used memory > 'maxmemory'."),
+			);
+		try {
+			const timed = new RememberedRedis(
+				{
+					ttl: 1000,
+					redisTtl: 1000000,
+					redisPrefix: 'REMEMBERED',
+					redisTimeout: 300,
+				},
+				redis,
+			);
+			expect(
+				await collect(
+					timed.getSWRStream(key, () => generate([1, 2, 3, 4]), {
+						chunkSize: 2,
+					}),
+				),
+			).toEqual([1, 2, 3, 4]);
+		} finally {
+			spy.mockRestore();
+		}
+		expect(await redis.exists(metaKey)).toBe(0);
+	});
+
+	it('should cold-regenerate without delivering anything when the cached generation vanished before the read', async () => {
+		const items = Array.from({ length: 10 }, (_, i) => i);
+		await collect(
+			target.getSWRStream(key, () => generate(items), { chunkSize: 5 }),
+		);
+		const genKey = (await currentGen()) as string;
+
+		// nobody has read from this pointer yet: losing it is a plain miss
+		await redis.del(genKey);
+
+		const callback = jest.fn(() => generate(items));
+		expect(
+			await collect(target.getSWRStream(key, callback, { chunkSize: 5 })),
+		).toEqual(items);
+		expect(callback).toHaveBeenCalledTimes(1);
+		const newGenKey = (await currentGen()) as string;
+		expect(newGenKey).not.toBe(genKey);
+	});
+
+	it('should cold-regenerate a generation damaged before the read, without delivering a poisoned prefix', async () => {
+		const items = Array.from({ length: 10 }, (_, i) => i);
+		await collect(
+			target.getSWRStream(key, () => generate(items), { chunkSize: 5 }),
+		);
+		const genKey = (await currentGen()) as string;
+
+		// eviction nibbled the generation before anybody read it
+		await redis.hdel(genKey, '1');
+
+		const callback = jest.fn(() => generate(items));
+		expect(
+			await collect(target.getSWRStream(key, callback, { chunkSize: 5 })),
+		).toEqual(items);
+		expect(callback).toHaveBeenCalledTimes(1);
+	});
+
+	it('should cold-regenerate when writes fail during a generation, delivering complete uncached', async () => {
+		const items = Array.from({ length: 10 }, (_, i) => i);
+
+		// every stream write is refused: the cold pass must deliver the
+		// full stream from the source and abandon caching entirely
+		const spy = jest.spyOn(redis, 'hset').mockImplementation((async (
+			keyArg: string,
+		) => {
+			if (keyArg.startsWith(metaKey)) {
+				throw new Error(
+					"OOM command not allowed when used memory > 'maxmemory'.",
+				);
+			}
+			return 1;
+		}) as never);
+		try {
+			expect(
+				await collect(
+					target.getSWRStream(key, () => generate(items), {
+						chunkSize: 5,
+					}),
+				),
+			).toEqual(items);
+		} finally {
+			spy.mockRestore();
+		}
+		// nothing partial was left behind
+		const [, genKeys] = await redis.scan(
+			0,
+			'MATCH',
+			`${metaKey}:*`,
+			'COUNT',
+			100,
+		);
+		expect(genKeys).toEqual([]);
 	});
 
 	it('should run the revalidation soft lock through the configured semaphore', async () => {

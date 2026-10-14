@@ -30,6 +30,7 @@ export type RedisLike = Pick<
 	| 'setex'
 	| 'del'
 	| 'hget'
+	| 'hexists'
 	| 'hgetBuffer'
 	| 'hset'
 	| 'hmget'

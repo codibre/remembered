@@ -47,12 +47,6 @@ export interface StreamOptions {
 	 */
 	maxLifetime?: number;
 	/**
-	 * How many times a stream lost mid-read (expired/evicted) may be silently
-	 * regenerated from the source and resumed, per consumer iterator.
-	 * Defaults to 3
-	 */
-	maxRecoveries?: number;
-	/**
 	 * Seconds a superseded (stale, replaced) generation must stay untouched
 	 * before readers reclaim it opportunistically, instead of waiting for the
 	 * ttl sweeper. Active readers keep renewing the generation, so a fresh

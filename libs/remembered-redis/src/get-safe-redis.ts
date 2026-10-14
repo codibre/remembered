@@ -8,6 +8,7 @@ const usedRedisMethods = [
 	'eval',
 	'evalsha',
 	'hget',
+	'hexists',
 	'hgetBuffer',
 	'hset',
 	'hmget',
