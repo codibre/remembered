@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.0](https://github.com/codibre/remembered/compare/%40remembered%2Fredis%402.0.0...%24%7Bnpm.name%7D%402.1.0) (2026-10-14)
+
+### Features
+
+* **@remembered/redis:** getSWRStream - stale-while-revalidate redis streamed cache ([988be04](https://github.com/codibre/remembered/commit/988be049f8fb0a80915ced00a0fb90581196eb99)), closes [#12](https://github.com/codibre/remembered/issues/12)
+
+### Bug Fixes
+
+* **@remembered/redis:** stream failures - write failures lose the cache, incomplete reads throw ([e5eef66](https://github.com/codibre/remembered/commit/e5eef6662eb97f4c2603054de5b16fec39c0876c))
+
 ## [2.0.0](https://github.com/codibre/remembered/compare/%40remembered%2Fredis%401.13.0...%24%7Bnpm.name%7D%402.0.0) (2026-08-24)
 
 ### Bug Fixes
